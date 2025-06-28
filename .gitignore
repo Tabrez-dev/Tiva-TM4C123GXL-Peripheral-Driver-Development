@@ -1,0 +1,80 @@
+# TI Code Composer Studio specific files
+.xdchelp
+.config/
+.launches/
+.metadata/
+.settings/
+.cproject
+.project
+.ccsproject
+.cdtbuild
+.cdtproject
+.csproject
+.ccsproject
+.ccs_globals
+
+# Build output directories
+Debug/
+Release/
+Flash/
+RAM/
+
+# Generated files
+*.obj
+*.out
+*.map
+*.xml
+*.mk
+*.opt
+*.pp
+*.bin
+*.elf
+*.hex
+*.d
+*.pru
+*.o
+*.lst
+*.lib
+*.a
+*.cmd
+*.ccxml
+*.dat
+*.dbo
+*.rpt
+*.xdl
+*.log
+*.html
+*.xml
+*.txt
+*.i
+*.s
+*.c.rsp
+*.h.rsp
+
+# Backup files
+*~
+*.bak
+*.swp
+*.tmp
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE specific files
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Ignore core dumps
+core
+
+# Ignore generated documentation
+doxygen/
