@@ -1,5 +1,5 @@
 /*
- * 002_ledtogggle_usr_button.c
+ * 004button_int.c
  *
  *  Created on: 28-Jun-2025
  *      Author: tabrez
@@ -38,7 +38,6 @@ int main(void)
     GPIOBtn.pGPIOx = GPIOF;
     GPIOBtn.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_0;
     GPIOBtn.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_IT_FT;
-    GPIOBtn.GPIO_PinConfig.GPIO_PinDriveStrength = GPIO_DRV_2MA;
     GPIOBtn.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PU;
     
     GPIO_Init(&GPIOBtn);
