@@ -3,25 +3,22 @@
 ################################################################################
 
 # Add inputs and outputs from these tool invocations to the build variables 
-CMD_SRCS += \
-../tm4c123gh6pm.cmd 
-
 C_SRCS += \
-../tm4c123gh6pm_startup_ccs.c 
+../src/004button_int.c 
 
 C_DEPS += \
-./tm4c123gh6pm_startup_ccs.d 
+./src/004button_int.d 
 
 OBJS += \
-./tm4c123gh6pm_startup_ccs.obj 
+./src/004button_int.obj 
 
 OBJS__QUOTED += \
-"tm4c123gh6pm_startup_ccs.obj" 
+"src/004button_int.obj" 
 
 C_DEPS__QUOTED += \
-"tm4c123gh6pm_startup_ccs.d" 
+"src/004button_int.d" 
 
 C_SRCS__QUOTED += \
-"../tm4c123gh6pm_startup_ccs.c" 
+"../src/004button_int.c" 
 
 

@@ -8,9 +8,9 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
-"./main.obj" \
 "./tm4c123gh6pm_startup_ccs.obj" \
 "./drivers/src/tm4c123x_gpio_driver.obj" \
+"./src/004button_int.obj" \
 "../tm4c123gh6pm.cmd" \
 $(GEN_CMDS__FLAG) \
 -llibc.a \
@@ -24,8 +24,10 @@ RMDIR := rm -rf
 -include sources.mk
 -include subdir_vars.mk
 -include drivers/src/subdir_vars.mk
+-include src/subdir_vars.mk
 -include subdir_rules.mk
 -include drivers/src/subdir_rules.mk
+-include src/subdir_rules.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -136,15 +138,15 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 tm4c123x_Drivers.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"/home/tabrez/Documents/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"tm4c123x_Drivers.map" --heap_size=0 --stack_size=512 -i"/home/tabrez/Documents/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/lib" -i"/home/tabrez/Documents/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="tm4c123x_Drivers_linkInfo.xml" --rom_model -o "tm4c123x_Drivers.out" $(ORDERED_OBJS)
+	"/home/tabrez/Documents/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --c99 --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"tm4c123x_Drivers.map" --heap_size=0 --stack_size=512 -i"/home/tabrez/Documents/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/lib" -i"/home/tabrez/Documents/ccs1281/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="tm4c123x_Drivers_linkInfo.xml" --rom_model -o "tm4c123x_Drivers.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "main.obj" "tm4c123gh6pm_startup_ccs.obj" "drivers/src/tm4c123x_gpio_driver.obj" 
-	-$(RM) "main.d" "tm4c123gh6pm_startup_ccs.d" "drivers/src/tm4c123x_gpio_driver.d" 
+	-$(RM) "tm4c123gh6pm_startup_ccs.obj" "drivers/src/tm4c123x_gpio_driver.obj" "src/004button_int.obj" 
+	-$(RM) "tm4c123gh6pm_startup_ccs.d" "drivers/src/tm4c123x_gpio_driver.d" "src/004button_int.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

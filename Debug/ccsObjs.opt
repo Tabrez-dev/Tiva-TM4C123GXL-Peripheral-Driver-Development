@@ -1,5 +1,5 @@
-"./main.obj"
 "./tm4c123gh6pm_startup_ccs.obj"
 "./drivers/src/tm4c123x_gpio_driver.obj"
+"./src/004button_int.obj"
 "../tm4c123gh6pm.cmd"
 -llibc.a

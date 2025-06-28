@@ -85,8 +85,23 @@ typedef struct
  * @GPIO_OUTPUT_TYPES
  * GPIO Output Types
  */
-#define GPIO_OPTYPE_PUSHPULL  0U  /* Push-pull output */
-#define GPIO_OPTYPE_OPENDRAIN 1U  /* Open-drain output */
+#define GPIO_OPTYPE_PP  0U  /* Push-pull output */
+#define GPIO_OPTYPE_OD  1U  /* Open-drain output */
+
+/* GPIO Lock and Commit */
+#define GPIO_LOCK_KEY                 0x4C4F434B  /* Unlock key for GPIOLOCK register */
+#define GPIO_LOCKED_PIN_PF0           (1U << 0)  /* PF0 requires unlock */
+#define GPIO_LOCKED_PIN_PD7           (1U << 7)  /* PD7 requires unlock */
+
+// Define a port-specific macro for locked pins
+#define GPIO_PORT_LOCKED_PINS(port)   ((port == GPIOF) ? GPIO_LOCKED_PIN_PF0 : \
+                                      ((port == GPIOD) ? GPIO_LOCKED_PIN_PD7 : 0))
+
+/* GPIO Speed/Drive Strength */
+#define GPIO_SPEED_LOW                GPIO_DRV_2MA
+#define GPIO_SPEED_MED                GPIO_DRV_4MA
+#define GPIO_SPEED_HIGH               GPIO_DRV_8MA
+
 
 
 
@@ -120,8 +135,9 @@ void GPIO_ToggleOutputPin(GPIO_RegDef_t *pGPIOx, uint8_t PinNumber);
 /*
  * IRQ configuration and ISR handling
  */
-void GPIO_IRQConfig(uint8_t IRQNumber, uint8_t IRQPriority, uint8_t EnorDi);//explore irq grouping later
-void GPIO_IRQHandling(uint8_t PinNumber);
+void GPIO_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
+void GPIO_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority);
+void GPIO_IRQHandling(GPIO_RegDef_t *pGPIOx, uint8_t PinNumber);
 
 
 

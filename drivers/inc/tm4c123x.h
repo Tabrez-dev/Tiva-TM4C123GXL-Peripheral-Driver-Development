@@ -7,10 +7,12 @@
 /*
  * The TM4C123GH6PM microcontroller comes with 32 KB of bit-banded SRAM, internal ROM, 256 KB of Flash memory, and 2KB of EEPROM.
  * */
-#include<stdint.h>
+
 
 #ifndef DRIVERS_INC_TM4C123X_H_
 #define DRIVERS_INC_TM4C123X_H_
+
+#include<stdint.h>
 /********************************** Memory Regions **********************************/
 #define FLASH_BASEADDR                          0x00000000U             /* Starting address of the 256 KB Flash memory, used for program code and constant data */
 #define SRAM_BASEADDR                           0x20000000U             /* Starting address of the 32 KB SRAM, used for runtime data storage */
@@ -100,6 +102,94 @@ static inline uint32_t GPIOE_BASEADDR(void) {
 static inline uint32_t GPIOF_BASEADDR(void) {
     return (SYSCTL_GPIOHBCTL_R & SYSCTL_GPIOHBCTL_PORTF) ? GPIOF_AHB_BASEADDR : GPIOF_APB_BASEADDR;
 }
+
+
+/************************NVIC*************************************************************** */
+// NVIC (Nested Vectored Interrupt Controller) Registers - Base address + offset approach
+#define NVIC_BASEADDR                          0xE000E000U
+
+// NVIC Register Offsets
+#define NVIC_EN_OFFSET                         0x100U  // Interrupt Set-Enable Registers offset
+#define NVIC_DIS_OFFSET                        0x180U  // Interrupt Clear-Enable Registers offset
+#define NVIC_PEND_OFFSET                       0x200U  // Interrupt Set-Pending Registers offset
+#define NVIC_UNPEND_OFFSET                     0x280U  // Interrupt Clear-Pending Registers offset
+#define NVIC_ACTIVE_OFFSET                     0x300U  // Interrupt Active Bit Registers offset
+#define NVIC_PRI_OFFSET                        0x400U  // Interrupt Priority Registers offset
+
+// NVIC Enable Registers (EN0-EN4)
+#define NVIC_EN0                               (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_EN_OFFSET + 0x00U)))
+#define NVIC_EN1                               (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_EN_OFFSET + 0x04U)))
+#define NVIC_EN2                               (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_EN_OFFSET + 0x08U)))
+#define NVIC_EN3                               (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_EN_OFFSET + 0x0CU)))
+#define NVIC_EN4                               (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_EN_OFFSET + 0x10U)))
+
+// NVIC Disable Registers (DIS0-DIS4)
+#define NVIC_DIS0                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_DIS_OFFSET + 0x00U)))
+#define NVIC_DIS1                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_DIS_OFFSET + 0x04U)))
+#define NVIC_DIS2                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_DIS_OFFSET + 0x08U)))
+#define NVIC_DIS3                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_DIS_OFFSET + 0x0CU)))
+#define NVIC_DIS4                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_DIS_OFFSET + 0x10U)))
+
+// NVIC Priority Registers (PRI0-PRI34)
+#define NVIC_PRI0                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x00U)))
+#define NVIC_PRI1                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x04U)))
+#define NVIC_PRI2                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x08U)))
+#define NVIC_PRI3                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x0CU)))
+#define NVIC_PRI4                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x10U)))
+#define NVIC_PRI5                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x14U)))
+#define NVIC_PRI6                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x18U)))
+#define NVIC_PRI7                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x1CU)))
+#define NVIC_PRI8                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x20U)))
+#define NVIC_PRI9                              (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x24U)))
+#define NVIC_PRI10                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x28U)))
+#define NVIC_PRI11                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x2CU)))
+#define NVIC_PRI12                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x30U)))
+#define NVIC_PRI13                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x34U)))
+#define NVIC_PRI14                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x38U)))
+#define NVIC_PRI15                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x3CU)))
+#define NVIC_PRI16                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x40U)))
+#define NVIC_PRI17                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x44U)))
+#define NVIC_PRI18                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x48U)))
+#define NVIC_PRI19                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x4CU)))
+#define NVIC_PRI20                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x50U)))
+#define NVIC_PRI21                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x54U)))
+#define NVIC_PRI22                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x58U)))
+#define NVIC_PRI23                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x5CU)))
+#define NVIC_PRI24                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x60U)))
+#define NVIC_PRI25                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x64U)))
+#define NVIC_PRI26                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x68U)))
+#define NVIC_PRI27                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x6CU)))
+#define NVIC_PRI28                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x70U)))
+#define NVIC_PRI29                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x74U)))
+#define NVIC_PRI30                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x78U)))
+#define NVIC_PRI31                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x7CU)))
+#define NVIC_PRI32                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x80U)))
+#define NVIC_PRI33                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x84U)))
+#define NVIC_PRI34                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PRI_OFFSET + 0x88U)))
+
+// NVIC Pending Registers (PEND0-PEND4)
+#define NVIC_PEND0                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PEND_OFFSET + 0x00U)))
+#define NVIC_PEND1                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PEND_OFFSET + 0x04U)))
+#define NVIC_PEND2                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PEND_OFFSET + 0x08U)))
+#define NVIC_PEND3                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PEND_OFFSET + 0x0CU)))
+#define NVIC_PEND4                             (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_PEND_OFFSET + 0x10U)))
+
+// NVIC Unpend Registers (UNPEND0-UNPEND4)
+#define NVIC_UNPEND0                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_UNPEND_OFFSET + 0x00U)))
+#define NVIC_UNPEND1                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_UNPEND_OFFSET + 0x04U)))
+#define NVIC_UNPEND2                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_UNPEND_OFFSET + 0x08U)))
+#define NVIC_UNPEND3                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_UNPEND_OFFSET + 0x0CU)))
+#define NVIC_UNPEND4                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_UNPEND_OFFSET + 0x10U)))
+
+// NVIC Active Bit Registers (ACTIVE0-ACTIVE4)
+#define NVIC_ACTIVE0                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_ACTIVE_OFFSET + 0x00U)))
+#define NVIC_ACTIVE1                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_ACTIVE_OFFSET + 0x04U)))
+#define NVIC_ACTIVE2                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_ACTIVE_OFFSET + 0x08U)))
+#define NVIC_ACTIVE3                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_ACTIVE_OFFSET + 0x0CU)))
+#define NVIC_ACTIVE4                           (*((volatile uint32_t*)(NVIC_BASEADDR + NVIC_ACTIVE_OFFSET + 0x10U)))
+
+#define __NVIC_PRIO_BITS 3  // TM4C123x implements 3 bits for priority levels (8 levels, 0-7)
+
 
 /*APB Peripherals*/
 
@@ -355,118 +445,213 @@ typedef struct {
 #define SYSCTL_DSLPCLK   ((SYSCTL_DeepSleepModeClkGatingRegDef_t*)(SYSCTL_BASEADDR + 0x800))
 #define SYSCTL_PR        ((SYSCTL_PeriphReadyRegDef_t*)(SYSCTL_BASEADDR + 0xA00))
 
-/* RCGCGPIO Bit Positions for Clock Enable */
-#define RCGCGPIO_PORTA          (1U << 0)
-#define RCGCGPIO_PORTB          (1U << 1)
-#define RCGCGPIO_PORTC          (1U << 2)
-#define RCGCGPIO_PORTD          (1U << 3)
-#define RCGCGPIO_PORTE          (1U << 4)
-#define RCGCGPIO_PORTF          (1U << 5)
-
 /* Clock enable macros for GPIOx peripherals */
-#define GPIOA_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= RCGCGPIO_PORTA)
-#define GPIOB_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= RCGCGPIO_PORTB)
-#define GPIOC_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= RCGCGPIO_PORTC)
-#define GPIOD_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= RCGCGPIO_PORTD)
-#define GPIOE_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= RCGCGPIO_PORTE)
-#define GPIOF_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= RCGCGPIO_PORTF)
+#define GPIOA_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<0)
+#define GPIOB_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<1)
+#define GPIOC_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<2)
+#define GPIOD_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<3)
+#define GPIOE_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<4)
+#define GPIOF_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<5)
 
-/*
- * Clock Enable macros for I2Cx peripherals
- */
-
-#define RCGCI2C_I2C0          (1U << 0)  /* I2C0 clock enable */
-#define RCGCI2C_I2C1          (1U << 1)  /* I2C1 clock enable */
-#define RCGCI2C_I2C2          (1U << 2)  /* I2C2 clock enable */
-#define RCGCI2C_I2C3          (1U << 3)  /* I2C3 clock enable */
+/* Clock disable macros for GPIOx peripherals */
+#define GPIOA_PCLK_DIS()  (SYSCTL_RUNCLK->RCGCGPIO &= ~(1U << 0))
+#define GPIOB_PCLK_DIS()  (SYSCTL_RUNCLK->RCGCGPIO &= ~(1U << 1))
+#define GPIOC_PCLK_DIS()  (SYSCTL_RUNCLK->RCGCGPIO &= ~(1U << 2))
+#define GPIOD_PCLK_DIS()  (SYSCTL_RUNCLK->RCGCGPIO &= ~(1U << 3))
+#define GPIOE_PCLK_DIS()  (SYSCTL_RUNCLK->RCGCGPIO &= ~(1U << 4))
+#define GPIOF_PCLK_DIS()  (SYSCTL_RUNCLK->RCGCGPIO &= ~(1U << 5))
 
 /* Clock enable macros for I2Cx peripherals */
-#define I2C0_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= RCGCI2C_I2C0)
-#define I2C1_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= RCGCI2C_I2C1)
-#define I2C2_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= RCGCI2C_I2C2)
-#define I2C3_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= RCGCI2C_I2C3)
+#define I2C0_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= 1U<<0)
+#define I2C1_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= 1U<<1)
+#define I2C2_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= 1U<<2)
+#define I2C3_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= 1U<<3)
 
 /*
  * Clock Enable macros for UARTx peripherals
  */
 
-/* RCGCUART Bit Positions for Clock Enable */
-#define RCGCUART_UART0        (1U << 0)  /* UART0 clock enable */
-#define RCGCUART_UART1        (1U << 1)  /* UART1 clock enable */
-#define RCGCUART_UART2        (1U << 2)  /* UART2 clock enable */
-#define RCGCUART_UART3        (1U << 3)  /* UART3 clock enable */
-#define RCGCUART_UART4        (1U << 4)  /* UART4 clock enable */
-#define RCGCUART_UART5        (1U << 5)  /* UART5 clock enable */
-#define RCGCUART_UART6        (1U << 6)  /* UART6 clock enable */
-#define RCGCUART_UART7        (1U << 7)  /* UART7 clock enable */
-
 /* Clock enable macros for UARTx peripherals */
-#define UART0_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= RCGCUART_UART0)
-#define UART1_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= RCGCUART_UART1)
-#define UART2_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= RCGCUART_UART2)
-#define UART3_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= RCGCUART_UART3)
-#define UART4_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= RCGCUART_UART4)
-#define UART5_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= RCGCUART_UART5)
-#define UART6_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= RCGCUART_UART6)
-#define UART7_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= RCGCUART_UART7)
+#define UART0_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 0)
+#define UART1_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 1)
+#define UART2_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 2)
+#define UART3_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 3)
+#define UART4_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 4)
+#define UART5_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 5)
+#define UART6_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 6)
+#define UART7_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 7)
 
 
 /*
  * Clock Enable macros for SSIx peripherals, implements 3 variants of SPI
  */
 
-/* RCGCSSI Bit Positions for Clock Enable */
-#define RCGCSSI_SSI0          (1U << 0)  /* SSI0 (SPI0) clock enable */
-#define RCGCSSI_SSI1          (1U << 1)  /* SSI1 (SPI1) clock enable */
-#define RCGCSSI_SSI2          (1U << 2)  /* SSI2 (SPI2) clock enable */
-#define RCGCSSI_SSI3          (1U << 3)  /* SSI3 (SPI3) clock enable */
-
 /* Clock enable macros for SSIx (SPIx) peripherals */
-#define SSI0_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= RCGCSSI_SSI0)
-#define SSI1_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= RCGCSSI_SSI1)
-#define SSI2_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= RCGCSSI_SSI2)
-#define SSI3_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= RCGCSSI_SSI3)
+#define SSI0_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= 1U << 0)
+#define SSI1_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= 1U << 1)
+#define SSI2_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= 1U << 2)
+#define SSI3_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= 1U << 3)
 
 
 /*
- * Clock Disable Macros for GPIOx peripherals
- * */
+ * GPIO Reset macros using SRCR2
+ * These macros perform a complete reset of the GPIO peripheral:
+ * 1. Trigger reset by setting the bit in SRCR2
+ * 2. Release from reset by clearing the bit
+ * 3. Wait until the peripheral is ready again (PRGPIO register)
+ */
+#define GPIOA_RESET() do { \
+    SYSCTL_CORE->SRCR2 |= (1U << 0); \
+    SYSCTL_CORE->SRCR2 &= ~(1U << 0); \
+    while(!(SYSCTL_PR->PRGPIO & (1U << 0))) {}; \
+} while(0)
 
-#define GPIOA_PCLK_DIS() (SYSCTL_RUNCLK->RCGCGPIO &= ~RCGCGPIO_PORTA)
-#define GPIOB_PCLK_DIS() (SYSCTL_RUNCLK->RCGCGPIO &= ~RCGCGPIO_PORTB)
-#define GPIOC_PCLK_DIS() (SYSCTL_RUNCLK->RCGCGPIO &= ~RCGCGPIO_PORTC)
-#define GPIOD_PCLK_DIS() (SYSCTL_RUNCLK->RCGCGPIO &= ~RCGCGPIO_PORTD)
-#define GPIOE_PCLK_DIS() (SYSCTL_RUNCLK->RCGCGPIO &= ~RCGCGPIO_PORTE)
-#define GPIOF_PCLK_DIS() (SYSCTL_RUNCLK->RCGCGPIO &= ~RCGCGPIO_PORTF)
+#define GPIOB_RESET() do { \
+    SYSCTL_CORE->SRCR2 |= (1U << 1); \
+    SYSCTL_CORE->SRCR2 &= ~(1U << 1); \
+    while(!(SYSCTL_PR->PRGPIO & (1U << 1))) {}; \
+} while(0)
+
+#define GPIOC_RESET() do { \
+    SYSCTL_CORE->SRCR2 |= (1U << 2); \
+    SYSCTL_CORE->SRCR2 &= ~(1U << 2); \
+    while(!(SYSCTL_PR->PRGPIO & (1U << 2))) {}; \
+} while(0)
+
+#define GPIOD_RESET() do { \
+    SYSCTL_CORE->SRCR2 |= (1U << 3); \
+    SYSCTL_CORE->SRCR2 &= ~(1U << 3); \
+    while(!(SYSCTL_PR->PRGPIO & (1U << 3))) {}; \
+} while(0)
+
+#define GPIOE_RESET() do { \
+    SYSCTL_CORE->SRCR2 |= (1U << 4); \
+    SYSCTL_CORE->SRCR2 &= ~(1U << 4); \
+    while(!(SYSCTL_PR->PRGPIO & (1U << 4))) {}; \
+} while(0)
+
+#define GPIOF_RESET() do { \
+    SYSCTL_CORE->SRCR2 |= (1U << 5); \
+    SYSCTL_CORE->SRCR2 &= ~(1U << 5); \
+    while(!(SYSCTL_PR->PRGPIO & (1U << 5))) {}; \
+} while(0)
 
 /*
- * Clock Disable Macros for I2Cx peripherals
- * */
+ * I2C Reset macros using SRCR1
+ * These macros perform a complete reset of the I2C peripheral:
+ * 1. Trigger reset by setting the bit in SRCR1
+ * 2. Release from reset by clearing the bit
+ * 3. Wait until the peripheral is ready again (PRI2C register)
+ */
+#define I2C0_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 0); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 0); \
+    while(!(SYSCTL_PR->PRI2C & (1U << 0))) {}; \
+} while(0)
 
-#define I2C0_PCLK_DIS() (SYSCTL_RUNCLK->RCGCI2C &= ~RCGCI2C_I2C0)
-#define I2C1_PCLK_DIS() (SYSCTL_RUNCLK->RCGCI2C &= ~RCGCI2C_I2C1)
-#define I2C2_PCLK_DIS() (SYSCTL_RUNCLK->RCGCI2C &= ~RCGCI2C_I2C2)
-#define I2C3_PCLK_DIS() (SYSCTL_RUNCLK->RCGCI2C &= ~RCGCI2C_I2C3)
+#define I2C1_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 1); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 1); \
+    while(!(SYSCTL_PR->PRI2C & (1U << 1))) {}; \
+} while(0)
+
+#define I2C2_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 2); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 2); \
+    while(!(SYSCTL_PR->PRI2C & (1U << 2))) {}; \
+} while(0)
+
+#define I2C3_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 3); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 3); \
+    while(!(SYSCTL_PR->PRI2C & (1U << 3))) {}; \
+} while(0)
+
 /*
- * Clock Disable macros for UARTx peripherals
- * */
-#define UART0_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~RCGCUART_UART0)
-#define UART1_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~RCGCUART_UART1)
-#define UART2_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~RCGCUART_UART2)
-#define UART3_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~RCGCUART_UART3)
-#define UART4_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~RCGCUART_UART4)
-#define UART5_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~RCGCUART_UART5)
-#define UART6_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~RCGCUART_UART6)
-#define UART7_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~RCGCUART_UART7)
+ * UART Reset macros using SRCR1
+ * These macros perform a complete reset of the UART peripheral:
+ * 1. Trigger reset by setting the bit in SRCR1
+ * 2. Release from reset by clearing the bit
+ * 3. Wait until the peripheral is ready again (PRUART register)
+ */
+#define UART0_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 0); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 0); \
+    while(!(SYSCTL_PR->PRUART & (1U << 0))) {}; \
+} while(0)
+
+#define UART1_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 1); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 1); \
+    while(!(SYSCTL_PR->PRUART & (1U << 1))) {}; \
+} while(0)
+
+#define UART2_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 2); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 2); \
+    while(!(SYSCTL_PR->PRUART & (1U << 2))) {}; \
+} while(0)
+
+#define UART3_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 3); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 3); \
+    while(!(SYSCTL_PR->PRUART & (1U << 3))) {}; \
+} while(0)
+
+#define UART4_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 4); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 4); \
+    while(!(SYSCTL_PR->PRUART & (1U << 4))) {}; \
+} while(0)
+
+#define UART5_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 5); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 5); \
+    while(!(SYSCTL_PR->PRUART & (1U << 5))) {}; \
+} while(0)
+
+#define UART6_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 6); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 6); \
+    while(!(SYSCTL_PR->PRUART & (1U << 6))) {}; \
+} while(0)
+
+#define UART7_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 7); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 7); \
+    while(!(SYSCTL_PR->PRUART & (1U << 7))) {}; \
+} while(0)
 
 /*
- * Clock Enable macros for SSIx peripherals, implements 3 variants of SPI
- * */
+ * SSI Reset macros using SRCR1
+ * These macros perform a complete reset of the SSI peripheral:
+ * 1. Trigger reset by setting the bit in SRCR1
+ * 2. Release from reset by clearing the bit
+ * 3. Wait until the peripheral is ready again (PRSSI register)
+ */
+#define SSI0_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 0); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 0); \
+    while(!(SYSCTL_PR->PRSSI & (1U << 0))) {}; \
+} while(0)
 
-#define SSI0_PCLK_DIS() (SYSCTL_RUNCLK->RCGCSSI &= ~RCGCSSI_SSI0)
-#define SSI1_PCLK_DIS() (SYSCTL_RUNCLK->RCGCSSI &= ~RCGCSSI_SSI1)
-#define SSI2_PCLK_DIS() (SYSCTL_RUNCLK->RCGCSSI &= ~RCGCSSI_SSI2)
-#define SSI3_PCLK_DIS() (SYSCTL_RUNCLK->RCGCSSI &= ~RCGCSSI_SSI3)
+#define SSI1_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 1); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 1); \
+    while(!(SYSCTL_PR->PRSSI & (1U << 1))) {}; \
+} while(0)
+
+#define SSI2_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 2); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 2); \
+    while(!(SYSCTL_PR->PRSSI & (1U << 2))) {}; \
+} while(0)
+
+#define SSI3_RESET() do { \
+    SYSCTL_CORE->SRCR1 |= (1U << 3); \
+    SYSCTL_CORE->SRCR1 &= ~(1U << 3); \
+    while(!(SYSCTL_PR->PRSSI & (1U << 3))) {}; \
+} while(0)
 
 
 /*
