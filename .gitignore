@@ -15,7 +15,12 @@
 
 # Build output directories
 Debug/
+Debug/*
+/Debug/
+/Debug/*
 Release/
+Release/*
+/Release/*
 Flash/
 RAM/
 
