@@ -1,7 +1,7 @@
 ******************************************************************************
                   TI ARM Linker Unix v20.2.7                   
 ******************************************************************************
->> Linked Sat Jun 28 17:48:24 2025
+>> Linked Sat Jun 28 17:49:19 2025
 
 OUTPUT FILE NAME:   <tm4c123x_Drivers.out>
 ENTRY POINT SYMBOL: "_c_int00_noinit_noargs"  address: 00000d4d

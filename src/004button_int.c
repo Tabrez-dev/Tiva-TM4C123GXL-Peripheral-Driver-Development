@@ -20,12 +20,6 @@ void delay(void)
 
 int main(void)
 {
-
-
-
-
-
-
     GPIO_Handle_t GpioLed, GPIOBtn;
     memset(&GpioLed, 0, sizeof(GpioLed));
     memset(&GPIOBtn, 0, sizeof(GPIOBtn));

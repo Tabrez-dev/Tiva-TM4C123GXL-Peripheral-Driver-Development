@@ -13,14 +13,27 @@
 .ccsproject
 .ccs_globals
 
-# Build output directories
+# Build output directories - be very explicit to ensure they're ignored
+Debug
 Debug/
-Debug/*
+Debug/**
+/Debug
 /Debug/
-/Debug/*
+/Debug/**
+**/Debug
+**/Debug/
+**/Debug/**
+
+Release
 Release/
-Release/*
-/Release/*
+Release/**
+/Release
+/Release/
+/Release/**
+**/Release
+**/Release/
+**/Release/**
+
 Flash/
 RAM/
 
