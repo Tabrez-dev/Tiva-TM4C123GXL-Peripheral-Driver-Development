@@ -1,10 +1,8 @@
 # TM4C123GXL Peripheral Driver Development
 
-![TM4C123GXL](https://www.ti.com/content/dam/ticom/images/products/ic/processors/evm-boards/launchpad-boostxl-boards/launchpad-boostxl-boards-1.png)
-
 ## Overview
 
-This repository contains a comprehensive, production-grade peripheral driver library for the Texas Instruments TM4C123GXL microcontroller (ARM Cortex-M4F). Designed with a focus on reliability, performance, and maintainability, this driver suite implements a hardware abstraction layer (HAL) that simplifies application development while providing full access to the microcontroller's capabilities.
+This repository contains a comprehensive, peripheral driver library for the Texas Instruments TM4C123GXL microcontroller (ARM Cortex-M4F). Designed with a focus on reliability, performance, and maintainability, this driver suite implements a hardware abstraction layer (HAL) that simplifies application development while providing full access to the microcontroller's capabilities.
 
 The architecture follows industry best practices with clear separation of concerns, comprehensive error handling, and thorough documentation. Each driver is developed with a consistent API pattern, making the codebase intuitive for developers familiar with embedded systems.
 
