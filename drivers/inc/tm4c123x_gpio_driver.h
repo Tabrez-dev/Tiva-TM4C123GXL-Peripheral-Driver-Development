@@ -17,6 +17,7 @@ typedef struct
 {
     uint8_t GPIO_PinNumber;                     /*!<Possible values from @GPIO_PIN_NUMBERS*/
     uint8_t GPIO_PinMode;                       /*!<Possible values from @GPIO_PIN_MODES*/
+    uint8_t GPIO_PinAltDir;                     /*!<GPIO_DIR_IN or GPIO_DIR_OUT for ALT_FN*/
     uint8_t GPIO_PinDriveStrength;              /*!<Possible values from @GPIO_PIN_DRIVE*/
     uint8_t GPIO_PinSlewRate;                   /*!<Possible values from @GPIO_SLEW_RATE*/
     uint8_t GPIO_PinPuPdControl;                /*!<Possible values from @GPIO_PULL_UP_DOWN*/
@@ -57,6 +58,13 @@ typedef struct
 #define GPIO_MODE_IT_FT       4U  /* Input with falling edge trigger interrupt */
 #define GPIO_MODE_IT_RT       5U  /* Input with rising edge trigger interrupt */
 #define GPIO_MODE_IT_RFT      6U  /* Input with rising and falling edge trigger interrupt */
+
+/*
+ * @GPIO_ALT_DIR
+ * Direction configuration when using alternate function mode
+ */
+#define GPIO_DIR_IN   0U   /*!< Alternate function pin configured as input */
+#define GPIO_DIR_OUT  1U   /*!< Alternate function pin configured as output */
 
 /*
  * @GPIO_PIN_DRIVE

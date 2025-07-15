@@ -113,6 +113,9 @@ void GPIO_PeriClockControl(GPIO_RegDef_t *pGPIOx, uint8_t EnorDi)
  *                      - Validates pin number and mode to prevent invalid configurations
  *                      - Configures registers with mutual exclusivity for drive strength and pull-up/down
  *                      - Interrupt modes require separate IRQ configuration via GPIO_IRQConfig
+ *                      - Automatically enables GPIO peripheral clock internally.
+ *                      - You do NOT need to call GPIO_PeriClockControl() separately.
+ *
  */
 void GPIO_Init(GPIO_Handle_t *pGPIOHandle)
 {
@@ -134,6 +137,8 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle)
     {
         return; // Exit if mode is invalid
     }
+
+    GPIO_PeriClockControl(pGPIOHandle->pGPIOx, ENABLE);
 
     // --- Local Variables for Clarity ---
     GPIO_RegDef_t *port = pGPIOHandle->pGPIOx;                // GPIO port base address
@@ -186,12 +191,22 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle)
             if (mode == GPIO_MODE_OUT)
             {
                 port->DIR |= mask; // Set pin as output
-            } else if (mode == GPIO_MODE_ALT_FN)
+            }
+            else if (mode == GPIO_MODE_ALT_FN)
             {
                 port->AFSEL |= mask; // Enable alternate function
-                uint32_t shift  = pin * 4; // Each pin has a 4-bit PCTL field
+                // Set Alternate Function in PCTL
+                uint32_t shift = pin * 4;
                 uint32_t altfun = pGPIOHandle->GPIO_PinConfig.GPIO_PinAltFunMode & 0xF;
-                port->PCTL = (port->PCTL & ~(0xF << shift)) | (altfun << shift); // Set alternate function
+                port->PCTL = (port->PCTL & ~(0xF << shift)) | (altfun << shift);
+                if (pGPIOHandle->GPIO_PinConfig.GPIO_PinAltDir == GPIO_DIR_OUT)
+                {
+                    port->DIR |= mask;
+                }
+                else
+                {
+                    port->DIR &= ~mask;
+                }
             }
             // GPIO_MODE_IN: DIR remains 0 (input) by default
         }

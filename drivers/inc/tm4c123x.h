@@ -13,6 +13,7 @@
 #define DRIVERS_INC_TM4C123X_H_
 
 #include<stdint.h>
+
 /********************************** Memory Regions **********************************/
 #define FLASH_BASEADDR                          0x00000000U             /* Starting address of the 256 KB Flash memory, used for program code and constant data */
 #define SRAM_BASEADDR                           0x20000000U             /* Starting address of the 32 KB SRAM, used for runtime data storage */
@@ -192,6 +193,12 @@ static inline uint32_t GPIOF_BASEADDR(void) {
 
 
 /*APB Peripherals*/
+
+/* SSI Base Addresses */
+#define SSI0_BASEADDR                (PERIPH_BASEADDR + 0x08000)
+#define SSI1_BASEADDR                (PERIPH_BASEADDR + 0x09000)
+#define SSI2_BASEADDR                (PERIPH_BASEADDR + 0x0A000)
+#define SSI3_BASEADDR                (PERIPH_BASEADDR + 0x0B000)
 
 #define I2C_0_BASEADDR               (PERIPH_BASEADDR + 0x20000)
 #define I2C_1_BASEADDR               (PERIPH_BASEADDR + 0x21000)
@@ -427,6 +434,20 @@ typedef struct {
     volatile uint32_t PRWTIMER;       // 0xA5C: Wide Timer Peripheral Ready
 } SYSCTL_PeriphReadyRegDef_t;
 
+/* SSI Register Structure */
+typedef struct {
+    volatile uint32_t CR0;     /* Control 0: Data size, clock settings (offset 0x000) */
+    volatile uint32_t CR1;     /* Control 1: Enable, master/slave mode (offset 0x004) */
+    volatile uint32_t DR;      /* Data: Transmit/Receive data (offset 0x008) */
+    volatile uint32_t SR;      /* Status: Busy, FIFO status (offset 0x00C) */
+    volatile uint32_t CPSR;    /* Clock Prescale: Clock divider (offset 0x010) */
+    volatile uint32_t IM;      /* Interrupt Mask (offset 0x014) */
+    volatile uint32_t RIS;     /* Raw Interrupt Status (offset 0x018) */
+    volatile uint32_t MIS;     /* Masked Interrupt Status (offset 0x01C) */
+    volatile uint32_t ICR;     /* Interrupt Clear (offset 0x020) */
+    volatile uint32_t DMACTL;  /* DMA Control (offset 0x024) */
+} SSI_RegDef_t;
+
 
 /****************************************************************Peripheral definitions typecasted**************************************************************************/
 /* Peripheral definitions typecasted */
@@ -467,6 +488,12 @@ typedef struct {
 #define I2C2_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= 1U<<2)
 #define I2C3_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= 1U<<3)
 
+/* SSI Peripheral Instances */
+#define SSI0    ((SSI_RegDef_t*)SSI0_BASEADDR)
+#define SSI1    ((SSI_RegDef_t*)SSI1_BASEADDR)
+#define SSI2    ((SSI_RegDef_t*)SSI2_BASEADDR)
+#define SSI3    ((SSI_RegDef_t*)SSI3_BASEADDR)
+
 /*
  * Clock Enable macros for UARTx peripherals
  */
@@ -492,6 +519,12 @@ typedef struct {
 #define SSI2_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= 1U << 2)
 #define SSI3_PCLK_EN() (SYSCTL_RUNCLK->RCGCSSI |= 1U << 3)
 
+
+/* Clock disable macros for SSIx (SPIx) peripherals */
+#define SSI0_PCLK_DIS() (SYSCTL_RUNCLK->RCGCSSI &= ~(1U << 0))
+#define SSI1_PCLK_DIS() (SYSCTL_RUNCLK->RCGCSSI &= ~(1U << 1))
+#define SSI2_PCLK_DIS() (SYSCTL_RUNCLK->RCGCSSI &= ~(1U << 2))
+#define SSI3_PCLK_DIS() (SYSCTL_RUNCLK->RCGCSSI &= ~(1U << 3))
 
 /*
  * GPIO Reset macros using SRCR2
@@ -664,6 +697,9 @@ typedef struct {
 #define GPIO_PIN_SET                    SET
 #define GPIO_PIN_RESET                  RESET
 
-
+#define FLAG_SET   SET
+#define FLAG_RESET RESET
+#include "tm4c123x_ssi_driver.h"
+#include "tm4c123x_gpio_driver.h"
 
 #endif /* DRIVERS_INC_TM4C123X_H_ */

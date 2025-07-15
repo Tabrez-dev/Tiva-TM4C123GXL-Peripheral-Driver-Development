@@ -33,8 +33,7 @@ void ResetISR(void);
 static void NmiSR(void);
 static void FaultISR(void);
 static void IntDefaultHandler(void);
-extern void GPIOF_IRQHandler(void);
-
+void __attribute__((weak)) GPIOF_IRQHandler(void);
 //*****************************************************************************
 //
 // External declaration for the reset handler that is to be called when the
