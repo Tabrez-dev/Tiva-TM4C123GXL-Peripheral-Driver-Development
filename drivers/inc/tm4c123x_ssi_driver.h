@@ -236,7 +236,7 @@ void SSI_DeInit(SSI_RegDef_t *pSSIx);
  */
 
 void SSI_SendData(SSI_RegDef_t *pSSIx, void *pTxBuffer, uint32_t Len);
-void SSI_ReceiveData(SSI_RegDef_t *pSSIx, uint8_t *pRxBuffer, uint32_t Len);
+void SSI_ReceiveData(SSI_RegDef_t *pSSIx, void *pRxBuffer, uint32_t Len);
 
 
 /*

@@ -122,12 +122,10 @@ int main()
             // Small delay for clock stabilization
             //for(volatile uint32_t i = 0; i < 1000; i++);
             
-            // Send data byte by byte with small delays
-            for(int i = 0; i < strlen(user_data); i++) {
-                SSI_SendData(SSI2, &user_data[i], 1);  // No cast needed with void*
-                // Small delay between bytes
-                for(volatile uint32_t j = 0; j < 1000; j++);
-            }
+            // Better approach - with length header
+            uint8_t msgLen = strlen(user_data);
+            SSI_SendData(SSI2, &msgLen, 1);  // Send length first
+            SSI_SendData(SSI2, user_data, msgLen);  // Send all data at once
             
             // Disable SSI2 peripheral clock to save power
             SSI_PeriClockControl(SSI2, DISABLE);

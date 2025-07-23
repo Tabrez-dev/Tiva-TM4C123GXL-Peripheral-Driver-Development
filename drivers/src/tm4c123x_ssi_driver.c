@@ -226,20 +226,59 @@ void SSI_SendData(SSI_RegDef_t *pSSIx, void *pTxBuffer, uint32_t Len)
 
 
 /***************************************************************************
- * @fn                          - SPI_ReceiveData
+ * @fn                          - SSI_ReceiveData
  *
- * @brief                       - Receives data from the SPI peripheral
+ * @brief                       - Receives data from the SSI peripheral
  *
- * @param[in]                   - pSPIx: Pointer to the SPI port base address (e.g., SPI0, SPI1)
+ * @param[in]                   - pSSIx: Pointer to the SSI base address (e.g., SSI0, SSI1)
  * @param[in]                   - pRxBuffer: Pointer to the receive data buffer
- * @param[in]                   - Len: Length of the data to be received
+ * @param[in]                   - Len: Number of data elements to receive
  *
  * @return                      - none
  *
- * @Note                        - Blocks until all data is received. Ensure SPI is initialized.
+ * @Note                        - Blocks until all data is received.
+ *                                DSS config in CR0 determines whether each element is 8 or 16 bits.
  */
-void SSI_ReceiveData(SSI_RegDef_t *pSSIx, uint8_t *pRxBuffer, uint32_t Len)
+void SSI_ReceiveData(SSI_RegDef_t *pSSIx, void *pRxBuffer, uint32_t Len)
 {
+    uint8_t *pData = (uint8_t *)pRxBuffer;  // Cast void* to uint8_t* for byte manipulation
+    
+    while (Len > 0)
+    {
+        // 1. Wait until Receive FIFO is not empty (RNE flag)
+        while (SSI_GetFlagStatus(pSSIx, SSI_FLAG_RNE) == FLAG_RESET);
+
+        // 2. Get DSS (Data Size Select): bits [3:0] of CR0
+        uint8_t dss = (pSSIx->CR0 & 0xF);  // DSS encoding from 0x3 to 0xF (4 to 16 bits)
+
+        if (dss <= 0x7)  // DSS = 0x3 to 0x7 → 4 to 8 bits
+        {
+            // Read DR for 1 byte of data and increment the rx buffer address
+            *pData = (uint8_t)(pSSIx->DR & 0xFF);  
+            /* Masking with 0xFF ensures we only get the lower 8 bits.
+             * The DR register is 16 bits wide, but when configured for 8-bit data,
+             * only the lower 8 bits contain valid data. The upper 8 bits may contain
+             * garbage or undefined values. Masking prevents these unwanted bits
+             * from being stored in our receive buffer.
+             */
+            pData++;
+            Len--;
+        }
+        else // DSS = 0x8 to 0xF → 9 to 16 bits
+        {
+            // Read DR for 2 bytes of data and increment the rx buffer address
+            uint16_t *pData16 = (uint16_t *)pData;
+            *pData16 = (uint16_t)(pSSIx->DR & 0xFFFF);  
+            /* Masking with 0xFFFF ensures we only get the lower 16 bits.
+             * Although DR is already 16 bits, this mask is a defensive programming
+             * practice that ensures no sign extension or compiler-specific behavior
+             * affects our data. It explicitly shows we want exactly 16 bits of data,
+             * making the code more portable and clear in intent.
+             */
+            pData += 2;
+            Len--;
+        }
+    }
 }
 
 /***************************************************************************
