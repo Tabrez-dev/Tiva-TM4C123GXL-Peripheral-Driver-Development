@@ -189,8 +189,10 @@ uint8_t SSI_GetFlagStatus(SSI_RegDef_t *pSSIx, uint32_t Flag)
  * @Note                        - Blocks until all data is transmitted.
  *                                DSS config in CR0 determines whether each element is 8 or 16 bits.
  */
-void SSI_SendData(SSI_RegDef_t *pSSIx, uint8_t *pTxBuffer, uint32_t Len)
+void SSI_SendData(SSI_RegDef_t *pSSIx, void *pTxBuffer, uint32_t Len)
 {
+    uint8_t *pData = (uint8_t *)pTxBuffer;  // Cast void* to uint8_t* for byte manipulation
+    
     while (Len > 0)
     {
         // 1. Wait until Transmit FIFO is not full
@@ -201,15 +203,15 @@ void SSI_SendData(SSI_RegDef_t *pSSIx, uint8_t *pTxBuffer, uint32_t Len)
 
         if (dss <= 0x7)  // DSS = 0x3 to 0x7 → 4 to 8 bits
         {
-            pSSIx->DR = *pTxBuffer;
-            pTxBuffer++;
+            pSSIx->DR = *pData;
+            pData++;
             Len--;
         }
         else // DSS = 0x8 to 0xF → 9 to 16 bits
         {
-            uint16_t *pData16 = (uint16_t *)pTxBuffer;
+            uint16_t *pData16 = (uint16_t *)pData;
             pSSIx->DR = *pData16;
-            pTxBuffer += 2;
+            pData += 2;
             Len--;
         }
     }

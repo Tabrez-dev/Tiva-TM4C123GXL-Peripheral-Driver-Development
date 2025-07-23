@@ -11,10 +11,22 @@
  * PB6->SSI2RX
  * PB7->SSI2TX
  * AF=2
+ * 
+ * SW1 Button -> PF4
  * */
 
 #include "tm4c123x.h"
 #include <string.h>
+
+#define BTN_PRESSED 0U
+
+void delay(void)
+{
+    uint32_t i = 50000;
+    while(i){
+        i--;
+    };
+}
 void SSI_GPIOInit(void)
 {
 
@@ -77,23 +89,55 @@ void SSI_MasterInit(void)
 
 int main()
 {
-    char user_data[]="Hello World";
+    char user_data[]="Hello World";    
+    // GPIO configuration for button SW1
+    GPIO_Handle_t GPIOBtn;
+    GPIOBtn.pGPIOx = GPIOF;
+    GPIOBtn.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_4;
+    GPIOBtn.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_IN;
+    GPIOBtn.GPIO_PinConfig.GPIO_PinDriveStrength = GPIO_DRV_2MA;
+    GPIOBtn.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PU;
+    
+    // Enable GPIO clock for button
+    GPIO_PeriClockControl(GPIOF, ENABLE);
+    GPIO_Init(&GPIOBtn);
+    
     //1. Init GPIO pins to behave as SSI2 pins
     SSI_GPIOInit();
     //2. SSI Init
     SSI_MasterInit();
+    
+    // Initially disable SSI2 clock to save power
+    SSI_PeriClockControl(SSI2, DISABLE);
 
-    //3. Small delay to ensure SSI is ready
-    for(volatile uint32_t i = 0; i < 10000; i++);
-
-    //4. Send data byte by byte with small delays
-    for(int i = 0; i < strlen(user_data); i++) {
-        SSI_SendData(SSI2, (uint8_t *)&user_data[i], 1);
-        // Small delay between bytes
-        for(volatile uint32_t j = 0; j < 1000; j++);
+    while(1)
+    {
+        if(GPIO_ReadFromInputPin(GPIOF, GPIO_PIN_4) == BTN_PRESSED)
+        {
+            delay();  // Debounce before reading again
+            
+            // Enable SSI2 peripheral clock
+            SSI_PeriClockControl(SSI2, ENABLE);
+            
+            // Small delay for clock stabilization
+            //for(volatile uint32_t i = 0; i < 1000; i++);
+            
+            // Send data byte by byte with small delays
+            for(int i = 0; i < strlen(user_data); i++) {
+                SSI_SendData(SSI2, &user_data[i], 1);  // No cast needed with void*
+                // Small delay between bytes
+                for(volatile uint32_t j = 0; j < 1000; j++);
+            }
+            
+            // Disable SSI2 peripheral clock to save power
+            SSI_PeriClockControl(SSI2, DISABLE);
+            
+            // Wait until button is released (avoid repeated transmissions)
+            while(GPIO_ReadFromInputPin(GPIOF, GPIO_PIN_4) == BTN_PRESSED);
+            
+            delay();  // Debounce after release
+        }
     }
     
-    //5. Keep the program running
-    while(1);
     return 0;
 }
