@@ -20,7 +20,19 @@ typedef struct {
     uint8_t SSI_FRF;          /* Frame Format (SPI, SSI, Microwire) */
     uint8_t SSI_SPO;         /* Clock Polarity: 0=low, 1=high */
     uint8_t SSI_SPH;         /* Clock Phase: 0=first edge, 1=second edge */
-    uint8_t SSI_FSSControl;  /* Frame Select control: software or external */
+    /*
+     * FSS (Frame Select/Chip Select) Pin Behavior:
+     *
+     * MASTER MODE:
+     * - FSS pin as ALT_FN: Hardware automatically drives FSS during transmission
+     * - FSS pin as GPIO/not configured: Manual CS control required via GPIO
+     *
+     * SLAVE MODE:
+     * - FSS pin as ALT_FN: Hardware monitors FSS input, responds only when selected
+     * - FSS pin as GPIO/not configured: Slave always enabled (no CS checking)
+     *
+     * Note: There are NO register bits to control this - it's determined by GPIO AFSEL
+     */
 } SSI_Config_t;
 
 /**
@@ -109,15 +121,6 @@ typedef struct {
  */
 #define SSI_SPH_1ST_EDGE 0x0  /* Data sampled on first clock edge */
 #define SSI_SPH_2ND_EDGE 0x1  /* Data sampled on second clock edge */
-
-/**
- * @SSI_FSSControl
- * Clock Phase for Freescale SPI (SSICR0.SPH)
- */
-#define SSI_FSS_HW  0x0  /* FSS(Frame Signal Select/Chip select) is driven externally (hardware-managed, slave mode only) */
-#define SSI_FSS_SW  0x1  /* FSS is controlled by software via GPIO (required in master mode) */
-
-
 
 /*
  * ----------------------------------------------------------------------------

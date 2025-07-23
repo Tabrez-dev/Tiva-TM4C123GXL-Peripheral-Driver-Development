@@ -36,9 +36,9 @@ void SSI_GPIOInit(void)
      ssiPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_4;
      GPIO_Init(&ssiPins);
 
-     //5. Configure PB5 (SSI2FSS)
-     //ssiPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_5;
-     //GPIO_Init(&ssiPins);
+     //5. Configure PB5 (SSI2FSS)- Hardware automatic CS control
+     ssiPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_5;
+     GPIO_Init(&ssiPins);
 
      //6. Configure PB6 (SSI2Rx)
      //ssiPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_6;
@@ -63,9 +63,15 @@ void SSI_MasterInit(void)
     ssi2Handle.SSIConfig.SSI_FRF          = SSI_FRF_SSI_FreeScale;
     ssi2Handle.SSIConfig.SSI_SPO          = SSI_SPO_LOW;
     ssi2Handle.SSIConfig.SSI_SPH          = SSI_SPH_1ST_EDGE;
-    ssi2Handle.SSIConfig.SSI_FSSControl   = SSI_FSS_SW;           // software-controlled FSS
 
-    //Call driver init
+    /*for manual control of fss use this*/
+
+    // Manual CS control during transmission
+    /*GPIO_WriteToOutputPin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET); // CS Low
+    SSI_SendData(SSI2, data, len);
+    GPIO_WriteToOutputPin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);   // CS High*/
+
+    // Call driver init
     SSI_Init(&ssi2Handle);
 }
 

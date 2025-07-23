@@ -55,8 +55,6 @@ void SSI_MasterInit(void)
     ssi2Handle.SSIConfig.SSI_FRF          = SSI_FRF_SSI_FreeScale;
     ssi2Handle.SSIConfig.SSI_SPO          = SSI_SPO_LOW;
     ssi2Handle.SSIConfig.SSI_SPH          = SSI_SPH_1ST_EDGE;
-    ssi2Handle.SSIConfig.SSI_FSSControl   = SSI_FSS_SW;           // software-controlled FSS
-
     //Call driver init
     SSI_Init(&ssi2Handle);
 }
