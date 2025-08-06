@@ -157,8 +157,8 @@ void SSI_DeInit(SSI_RegDef_t *pSSIx)
 }
 
 /**
- * @fn      - SSI_GetFlagStatus
- * @brief   - Checks the status of a specific flag in the SSI Status Register
+ * @fn      - SSI_GetStatus
+ * @brief   - Checks the status of a specific  in the SSI Status Register
  *
  * @param[in]  pSSIx : Pointer to the SSI peripheral base address
  * @param[in]  Flag  : One of the SSI_FLAG_x macros (e.g., SSI_FLAG_TNF)
