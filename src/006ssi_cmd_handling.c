@@ -25,13 +25,15 @@
 
 #define LED_ON 1
 #define LED_OFF 0
+int count = 0;
 
 void delay(void)
 {
-    uint32_t i = 50000;
-    while(i){
+    uint32_t i = 200000; // Adjust for ~10-20 ms
+    while (i)
+    {
         i--;
-    };
+    }
 }
 
 void SSI_GPIOInit(void)
@@ -40,11 +42,11 @@ void SSI_GPIOInit(void)
     ssiPins.pGPIOx = GPIOB;
 
     // Common configuration for all SSI2 pins
-    ssiPins.GPIO_PinConfig.GPIO_PinMode        = GPIO_MODE_ALT_FN;
-    ssiPins.GPIO_PinConfig.GPIO_PinAltFunMode  = 2;  // AF = 2 for SSI2
-    ssiPins.GPIO_PinConfig.GPIO_PinOPType      = GPIO_OPTYPE_PP;
+    ssiPins.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_ALT_FN;
+    ssiPins.GPIO_PinConfig.GPIO_PinAltFunMode = 2;  // AF = 2 for SSI2
+    ssiPins.GPIO_PinConfig.GPIO_PinOPType = GPIO_OPTYPE_PP;
     ssiPins.GPIO_PinConfig.GPIO_PinDriveStrength = GPIO_SPEED_MED;
-    ssiPins.GPIO_PinConfig.GPIO_PinSlewRate    = GPIO_SLEW_OFF;
+    ssiPins.GPIO_PinConfig.GPIO_PinSlewRate = GPIO_SLEW_OFF;
     ssiPins.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PUPD_NONE;
 
     // Configure PB4 (SSI2CLK)
@@ -69,24 +71,24 @@ void SSI_MasterInit(void)
     SSI_Handle_t ssi2Handle;
     ssi2Handle.pSSIx = SSI2;
 
-    ssi2Handle.SSIConfig.SSI_DeviceMode   = SSI_DEVICE_MODE_MASTER;
-    ssi2Handle.SSIConfig.SSI_BusConfig    = SSI_BUS_CONFIG_FD;   // Full duplex
-    ssi2Handle.SSIConfig.SSI_SclkSpeed    = SSI_SCLK_SPEED_DIV8; // SysClk/8 = 2MHz if SysClk=16MHz
-    ssi2Handle.SSIConfig.SSI_DSS          = SSI_DSS_8BIT;        // 8-bit frame
-    ssi2Handle.SSIConfig.SSI_FRF          = SSI_FRF_SSI_FreeScale;
-    ssi2Handle.SSIConfig.SSI_SPO          = SSI_SPO_LOW;
-    ssi2Handle.SSIConfig.SSI_SPH          = SSI_SPH_1ST_EDGE;
+    ssi2Handle.SSIConfig.SSI_DeviceMode = SSI_DEVICE_MODE_MASTER;
+    ssi2Handle.SSIConfig.SSI_BusConfig = SSI_BUS_CONFIG_FD;   // Full duplex
+    ssi2Handle.SSIConfig.SSI_SclkSpeed = SSI_SCLK_SPEED_DIV8; // SysClk/8 = 2MHz if SysClk=16MHz
+    ssi2Handle.SSIConfig.SSI_DSS = SSI_DSS_8BIT;        // 8-bit frame
+    ssi2Handle.SSIConfig.SSI_FRF = SSI_FRF_SSI_FreeScale;
+    ssi2Handle.SSIConfig.SSI_SPO = SSI_SPO_LOW;
+    ssi2Handle.SSIConfig.SSI_SPH = SSI_SPH_1ST_EDGE;
 
     SSI_Init(&ssi2Handle);
 }
 
 uint8_t SSI_VerifyResponse(uint8_t ackbyte)
 {
-    if(ackbyte == 0xF5)
+    if (ackbyte == 0xF5)
     {
-       return 1; //ack
-    } 
-    else 
+        return 1; //ack
+    }
+    else
     {
         return 0; // nack
     }
@@ -113,60 +115,50 @@ int main()
     SSI_PeriClockControl(SSI2, DISABLE);
 
     uint8_t current_cmd = CMD_LED1;  // Start with LED 1
-    uint8_t dummy_write; // 1 byte for 8 bit data transfer , Dummy data to read response
+    uint8_t dummy_write = 0xFF; // Initialize with a value (0xFF is commonly used)
     uint8_t dummy_read; // Dummy read to clear RXNE
-    while(1)
+    while (1)
     {
-        if(GPIO_ReadFromInputPin(GPIOF, GPIO_PIN_4) == BTN_PRESSED)
+        // Wait for button press (active low - returns 0 when pressed)
+        while (GPIO_ReadFromInputPin(GPIOF, GPIO_PIN_4) != BTN_PRESSED);
+        delay();  // Debounce
+
+        // Enable SSI2 peripheral clock
+        SSI_PeriClockControl(SSI2, ENABLE);
+
+        //1. CMD_LED_CTRL <pin no> <value>
+        uint8_t command_code = COMMAND_LED_CTRL;
+        uint8_t ackbyte;
+        uint8_t args[2];
+
+        SSI_SendData(SSI2, &command_code, 1);
+        //do dummy read to clear off the RXNE
+        SSI_ReceiveData(SSI2, &dummy_read, 1);
+        //SEND some dummy bits (1byte) to fetch the response from slave
+        SSI_SendData(SSI2, &dummy_write, 1);
+        // read ack byte from slave
+        SSI_ReceiveData(SSI2, &ackbyte, 1);
+
+        if (SSI_VerifyResponse(ackbyte))
         {
-            delay();  // Debounce
+            //send arguments
+            args[0] = LED3_PIN; // Pin number for LED 3
+            args[1] = LED_ON;
 
-            // Enable SSI2 peripheral clock
-            SSI_PeriClockControl(SSI2, ENABLE);
+            SSI_SendData(SSI2, args, 2);
+            count++;
+            uint8_t temp[2];
+            SSI_ReceiveData(SSI2, temp, 2); // Clear RX FIFO
 
-            //1. CMD_LED_CTRL <pin no> <value>
-            uint8_t command_code = COMMAND_LED_CTRL;
-            uint8_t ackbyte;
-            uint8_t args[2];
-            
-            SSI_SendData(SSI2, &command_code, 1);
-            //do dummy read to clear off the RXNE
-            SSI_ReceiveData(SSI2, &dummy_read, 1);
-            //SEND some dummy bits (1byte) to fetch the response from slave
-            SSI_SendData(SSI2, &dummy_write, 1);
-            // read ack byte from slave
-            SSI_ReceiveData(SSI2, &ackbyte, 1);
-
-            if(SSI_VerifyResponse(ackbyte))
-            {
-                //send arguments
-                args[0]=LED3_PIN; // Pin number for LED 3
-                args[1]=LED_ON;
-                
-                SSI_SendData(SSI2, args, 2);
-            }
-            //2. CMD_STATUS_READ<pin number>
-             //delay();  // Debounce
-            // command_code = COMMAND_STATUS_READ;
-             while(SSI_GetFlagStatus(SSI2, SSI_FLAG_BSY));
-
-
-            // Send the current command byte
-            //SSI_SendData(SSI2, &current_cmd, 1);
-
-            // Disable SSI2 peripheral clock
-            SSI_PeriClockControl(SSI2, DISABLE);
-
-            // // Cycle to the next command
-            // if(current_cmd == CMD_LED4)
-            //     current_cmd = CMD_LED1;
-            // else
-            //     current_cmd++;
-
-            // // Wait until button is released
-            // while(GPIO_ReadFromInputPin(GPIOF, GPIO_PIN_4) == BTN_PRESSED);
-            // delay();  // Debounce after release
         }
+        //end of 1.
+        //2. CMD_STATUS_READ<pin number>
+
+        while (SSI_GetFlagStatus(SSI2, SSI_FLAG_BSY));
+
+        SSI_PeriClockControl(SSI2, DISABLE);
+        while (GPIO_ReadFromInputPin(GPIOF, GPIO_PIN_4) == BTN_PRESSED);
     }
     return 0;
 }
+

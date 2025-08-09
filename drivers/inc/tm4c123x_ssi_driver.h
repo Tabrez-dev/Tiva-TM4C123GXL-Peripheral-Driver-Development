@@ -237,7 +237,7 @@ void SSI_DeInit(SSI_RegDef_t *pSSIx);
 
 void SSI_SendData(SSI_RegDef_t *pSSIx, void *pTxBuffer, uint32_t Len);
 void SSI_ReceiveData(SSI_RegDef_t *pSSIx, void *pRxBuffer, uint32_t Len);
-
+uint8_t SSI_GetFlagStatus(SSI_RegDef_t *pSSIx, uint32_t Flag);
 
 /*
  * IRQ Configuration and ISR handling
