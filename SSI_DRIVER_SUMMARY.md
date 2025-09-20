@@ -44,7 +44,69 @@
   ---
   **Validation**: Logic analyzer verified | **Interoperability**: TI ↔ STM32 confirmed
 
-  <img width="1851" height="554" alt="image" src="https://github.com/user-attachments/assets/5d4d4452-9d4a-4c46-820d-796cf4ab2211" />
+<img width="1851" height="554" alt="image" src="https://github.com/user-attachments/assets/52b448c7-a29c-4668-9064-988adbaaea52" />
 
-  <img width="1851" height="554" alt="image" src="https://github.com/user-attachments/assets/75aa6349-d3d2-41fe-8ec1-4769e8bc20d4" />
+ Full Transaction Analysis:
+
+  Transaction 1 (~T7): STATUS_READ Command
+  - MOSI: 0x01 (COMMAND_STATUS_READ) 
+  - MISO: 0xF5 (ACK from slave)
+
+  Transaction 2 (~+10μs): Clock ACK
+  - MOSI: 0xFF (dummy byte to clock ACK)
+  - MISO: 0xF5 (ACK confirmation)
+
+  Transaction 3 (~+20μs): Send Pin Number
+  - MOSI: 0x0D (LED3_PIN = 13 = PD13)
+  - MISO: 0xF5 (slave received pin number)
+
+  Transaction 4 (~+40μs): Read LED Status
+  - MOSI: 0xFF (dummy to clock status out)
+  - MISO: 0xF5 (LED status = ON/1)
+
+  1. STATUS_READ command (0x01) - Finally confirmed!
+  2. Pin number transmission (0x0D = 13)
+  3. Status response (0xF5 = LED is ON)
+  4. Complete 4-transaction sequence
+  5. Consistent ACK protocol throughout
+
+  Protocol Summary:
+  - Master sends: [0x01] [0xFF] [0x0D] [0xFF]
+  - Slave responds: [0xF5] [0xF5] [0xF5] [0xF5]
+
+<img width="1851" height="554" alt="image" src="https://github.com/user-attachments/assets/f9332cde-33c4-492a-ae4a-8c297a05fe00" />
+
+LED Control Protocol Sequence Analysis:
+
+  Transaction 1 (~T7): LED_CTRL Command
+  - MOSI: 0x00 (COMMAND_LED_CTRL)
+  - MISO: 0xF5 (ACK from slave)
+
+  Transaction 2 (~+10μs): Clock ACK
+  - MOSI: 0xFF (dummy byte to clock ACK)
+  - MISO: 0xF5 (ACK confirmation)
+
+  Transaction 3 (~+30μs): Send Pin Number
+  - MOSI: 0x0D (LED3_PIN = 13 = PD13)
+  - MISO: 0xF5 (slave received pin number)
+
+  Transaction 4 (~+40μs): Send LED State
+  - MOSI: 0x00 (LED_OFF = 0)
+  - MISO: 0xF5 (slave received LED state)
+
+  Key Observations:
+
+  1. LED_CTRL command (0x00) transmitted correctly
+  2. Pin number (0x0D = 13) sent to specify PD13 (Orange LED)
+  3. LED state (0x00 = OFF) commanding LED to turn off
+  4. Consistent ACK protocol (0xF5) maintained throughout all transactions
+  5. 4-transaction sequence complete for LED control operation
+
+  Protocol Summary:
+  - Master sends: [0x00] [0xFF] [0x0D] [0x00]
+  - Slave responds: [0xF5] [0xF5] [0xF5] [0xF5]
+
+  Command Interpretation:
+  This capture shows a complete LED control sequence commanding the Orange LED (PD13) to turn OFF. The slave acknowledges each step with 0xF5,
+  confirming proper command reception and execution.
 
