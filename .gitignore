@@ -96,3 +96,7 @@ core
 
 # Ignore generated documentation
 doxygen/
+
+# Project-specific files to ignore
+CLAUDE.md
+slave.c
