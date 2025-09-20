@@ -197,8 +197,11 @@ int main()
 
             SSI_SendData(SSI2, args, 2);
             count++;
-            uint8_t temp[2];
-            SSI_ReceiveData(SSI2, temp, 2);     // clear any RX
+            // Non-blocking conditional drain of RX FIFO
+            uint8_t dummy_byte;
+            while (SSI_GetFlagStatus(SSI2, SSI_FLAG_RNE)) {
+                SSI_ReceiveData(SSI2, &dummy_byte, 1);
+            }
         }
         CS_Deselect();
 
