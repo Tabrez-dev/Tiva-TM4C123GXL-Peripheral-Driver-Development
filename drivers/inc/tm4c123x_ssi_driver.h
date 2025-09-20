@@ -52,10 +52,10 @@ typedef struct {
 
 /**
  * @SSI_BusConfig
+ * Note: TM4C123x SSI hardware only supports Full-Duplex mode.
+ * Half-duplex and simplex modes would require software emulation.
  */
-#define SSI_BUS_CONFIG_FD                   1
-#define SSI_BUS_CONFIG_HD                   2
-#define SSI_BUS_CONFIG_SIMPLEX_RXONLY       3
+#define SSI_BUS_CONFIG_FD                   1   /* Full-Duplex (hardware native mode) */
 
 /**
  * @SSI_SclkSpeed : The SSI module’s maximum clock speed is typically 25 MHz, Total divisor = CPSDVSR × (1 + SCR)
@@ -71,7 +71,7 @@ typedef struct {
 /**
  * @SSI_FRF
  */
-#define SSI_FRF_SSI_FreeScale       0x0  /* Freescale SPI */
+#define SSI_FRF_SSI_Freescale       0x0  /* Freescale SPI */
 #define SSI_FRF_SSI_TI       0x1  /* Texas Instruments SSI */
 #define SSI_FRF_MICROWIRE 0x2  /* Microwire */
 
@@ -94,7 +94,7 @@ typedef struct {
 
 /**
  * ----------------------------------------------------------------------------
- * These settings apply **only** when SSI_FRF = SSI_FRF_SSI_FreeScale (0x0)
+ * These settings apply **only** when SSI_FRF = SSI_FRF_SSI_Freescale (0x0)
  *
  * - SPO and SPH: Clock polarity and phase settings
  *   → These are used *only* in Freescale SPI mode. They are ignored in TI or Microwire modes.

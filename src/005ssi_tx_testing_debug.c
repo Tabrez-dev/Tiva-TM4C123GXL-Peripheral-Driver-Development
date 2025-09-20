@@ -18,6 +18,29 @@
 #include "tm4c123x.h"
 #include <string.h>
 
+// System clock frequency (TM4C123x default is 16MHz)
+#define SYSTEM_CLOCK_HZ 16000000U
+
+// SysTick register definitions (if not already defined)
+#ifndef SysTick_BASE
+#define SysTick_BASE    0xE000E010UL
+#define SysTick         ((SysTick_Type *) SysTick_BASE)
+
+typedef struct
+{
+    volatile uint32_t CTRL;   // SysTick Control and Status Register
+    volatile uint32_t LOAD;   // SysTick Reload Value Register
+    volatile uint32_t VAL;    // SysTick Current Value Register
+    volatile uint32_t CALIB;  // SysTick Calibration Register
+} SysTick_Type;
+#endif
+
+// SysTick Control register bit definitions
+#define SysTick_CTRL_ENABLE_Pos    0U
+#define SysTick_CTRL_ENABLE_Msk    (1UL << SysTick_CTRL_ENABLE_Pos)
+#define SysTick_CTRL_CLKSOURCE_Pos 2U
+#define SysTick_CTRL_CLKSOURCE_Msk (1UL << SysTick_CTRL_CLKSOURCE_Pos)
+
 void SSI_GPIOInit(void)
 {
     GPIO_Handle_t ssiPins;
@@ -71,26 +94,50 @@ void SSI_MasterInit(void)
     SSI_Init(&ssi2Handle);
 }
 
+// Microsecond delay function using SysTick timer
+void delay_us(uint32_t microseconds)
+{
+    if (microseconds == 0) return;
+
+    // Calculate ticks needed for the delay (system clock / 1,000,000 = ticks per microsecond)
+    uint32_t ticks_per_us = SYSTEM_CLOCK_HZ / 1000000U;
+    uint32_t total_ticks = microseconds * ticks_per_us;
+
+    // Configure SysTick for countdown mode
+    SysTick->CTRL = 0;  // Disable SysTick
+    SysTick->LOAD = total_ticks - 1;  // Set reload value (24-bit max)
+    SysTick->VAL = 0;   // Clear current value
+
+    // Enable SysTick with processor clock source, no interrupt
+    SysTick->CTRL = SysTick_CTRL_ENABLE_Msk | SysTick_CTRL_CLKSOURCE_Msk;
+
+    // Wait until the timer counts down to zero
+    while ((SysTick->CTRL & (1U << 16)) == 0);  // Wait for COUNTFLAG
+
+    // Disable SysTick
+    SysTick->CTRL = 0;
+}
+
 // Function to send a single byte with manual CS control
 void SSI_SendByteWithCS(uint8_t data)
 {
     // Pull CS low
     GPIO_WriteToOutputPin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
-    
-    // Small delay
-    for(volatile uint32_t i = 0; i < 100; i++);
-    
+
+    // Small delay for CS setup time
+    delay_us(1);
+
     // Send byte
     SSI_SendData(SSI2, &data, 1);
-    
-    // Small delay
-    for(volatile uint32_t i = 0; i < 100; i++);
-    
+
+    // Small delay for CS hold time
+    delay_us(1);
+
     // Pull CS high
     GPIO_WriteToOutputPin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
-    
+
     // Delay between bytes
-    for(volatile uint32_t i = 0; i < 1000; i++);
+    delay_us(10);
 }
 
 int main()
@@ -115,7 +162,8 @@ int main()
     
     //6. Send "Hello World" byte by byte with CS control
     char user_data[] = "Hello World";
-    for(int i = 0; i < strlen(user_data); i++) {
+    size_t data_length = strlen(user_data);
+    for(int i = 0; i < data_length; i++) {
         SSI_SendByteWithCS(user_data[i]);
     }
     

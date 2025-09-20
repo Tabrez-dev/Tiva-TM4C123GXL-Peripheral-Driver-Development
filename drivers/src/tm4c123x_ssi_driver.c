@@ -37,12 +37,17 @@ void SSI_PeriClockControl(SSI_RegDef_t *pSSIx, uint8_t EnorDi)
             SSI3_PCLK_EN();
         }
 
-        // Wait for peripheral readiness
+        // Wait for peripheral readiness with timeout
         uint32_t portBit = (pSSIx == SSI0) ? (1U << 0) :
                            (pSSIx == SSI1) ? (1U << 1) :
                            (pSSIx == SSI2) ? (1U << 2) :
                            (1U << 3);  // SSI3
-        while (!(SYSCTL_PR->PRSSI  & portBit)) {};  // Spin until ready
+
+        uint32_t timeout = 10000; // Maximum iterations to wait
+        while (!(SYSCTL_PR->PRSSI & portBit) && timeout > 0) {
+            timeout--;
+        }
+        // Note: Could add error handling here if timeout == 0
     } else {
         // Disable clock for the specified SSI port
         if (pSSIx == SSI0) {
@@ -94,7 +99,12 @@ void SSI_Init(SSI_Handle_t *pSSIHandle)
     tempCR0 |= (pSSIHandle->SSIConfig.SSI_FRF & 0x3U) << SSI_SSICR0_FRF;
 
     // 4. Data Size (4–16 bits) – DSS field [3:0]
-    tempCR0 |= (pSSIHandle->SSIConfig.SSI_DSS & 0xFU) << SSI_SSICR0_DSS;
+    // Validate DSS is in range 0x3 to 0xF (4 to 16 bits)
+    uint8_t dss_value = pSSIHandle->SSIConfig.SSI_DSS & 0xFU;
+    if (dss_value < 0x3) {
+        dss_value = 0x3; // Default to minimum 4-bit data size
+    }
+    tempCR0 |= dss_value << SSI_SSICR0_DSS;
 
     // 5. Clock Polarity and Phase
     tempCR0 |= (pSSIHandle->SSIConfig.SSI_SPO & 0x1U) << SSI_SSICR0_SPO;
@@ -182,12 +192,15 @@ uint8_t SSI_GetFlagStatus(SSI_RegDef_t *pSSIx, uint32_t Flag)
  *
  * @param[in]                   - pSSIx: Pointer to the SSI base address (e.g., SSI0, SSI1)
  * @param[in]                   - pTxBuffer: Pointer to the transmit data buffer
- * @param[in]                   - Len: Number of data elements to transmit
+ * @param[in]                   - Len: Number of data frames to transmit (not bytes)
+ *                                For DSS 4-8 bits: each frame = 1 byte
+ *                                For DSS 9-16 bits: each frame = 2 bytes (little-endian)
  *
  * @return                      - none
  *
  * @Note                        - Blocks until all data is transmitted.
- *                                DSS config in CR0 determines whether each element is 8 or 16 bits.
+ *                                DSS config in CR0 determines frame size (4-16 bits).
+ *                                For 16-bit transfers, data is read as little-endian.
  */
 void SSI_SendData(SSI_RegDef_t *pSSIx, void *pTxBuffer, uint32_t Len)
 {
@@ -209,8 +222,9 @@ void SSI_SendData(SSI_RegDef_t *pSSIx, void *pTxBuffer, uint32_t Len)
         }
         else // DSS = 0x8 to 0xF → 9 to 16 bits
         {
-            uint16_t *pData16 = (uint16_t *)pData;
-            pSSIx->DR = *pData16;
+            // Safe 16-bit data read avoiding alignment issues
+            uint16_t data16 = pData[0] | (pData[1] << 8);
+            pSSIx->DR = data16;
             pData += 2;
             Len--;
         }
@@ -266,15 +280,18 @@ void SSI_ReceiveData(SSI_RegDef_t *pSSIx, void *pRxBuffer, uint32_t Len)
         }
         else // DSS = 0x8 to 0xF → 9 to 16 bits
         {
-            // Read DR for 2 bytes of data and increment the rx buffer address
-            uint16_t *pData16 = (uint16_t *)pData;
-            *pData16 = (uint16_t)(pSSIx->DR & 0xFFFF);  
+            // Read DR for 2 bytes of data - safe alignment method
+            uint16_t data16 = (uint16_t)(pSSIx->DR & 0xFFFF);
             /* Masking with 0xFFFF ensures we only get the lower 16 bits.
              * Although DR is already 16 bits, this mask is a defensive programming
              * practice that ensures no sign extension or compiler-specific behavior
              * affects our data. It explicitly shows we want exactly 16 bits of data,
              * making the code more portable and clear in intent.
              */
+
+            // Copy bytes individually to avoid alignment issues
+            pData[0] = (uint8_t)(data16 & 0xFF);        // Low byte
+            pData[1] = (uint8_t)((data16 >> 8) & 0xFF); // High byte
             pData += 2;
             Len--;
         }
