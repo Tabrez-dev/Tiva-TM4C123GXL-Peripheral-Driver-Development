@@ -36,12 +36,34 @@ typedef struct {
 } SSI_Config_t;
 
 /**
- * @brief SPI Handle Structure
+ * @brief SSI Handle Structure for interrupt-based operations
  */
 typedef struct {
     SSI_RegDef_t* pSSIx;     /* Pointer to the SSI register set (e.g., SSI0) */
-    SSI_Config_t SSIConfig;  /* Configuration settings for the SPI peripheral */
+    SSI_Config_t SSIConfig;  /* Configuration settings for the SSI peripheral */
+    uint8_t *pTxBuffer;      /* To store the app. Tx buffer address */
+    uint8_t *pRxBuffer;      /* To store the app. Rx buffer address */
+    uint32_t TxLen;          /* To store Tx len */
+    uint32_t RxLen;          /* To store Rx len */
+    uint8_t TxState;         /* To store Tx state */
+    uint8_t RxState;         /* To store Rx state */
 } SSI_Handle_t;
+
+/**
+ * @SSI_State
+ * SSI peripheral states for interrupt-based operations
+ */
+#define SSI_READY                0  /* SSI peripheral is ready for new operation */
+#define SSI_BUSY_IN_RX          1  /* SSI peripheral is busy in reception */
+#define SSI_BUSY_IN_TX          2  /* SSI peripheral is busy in transmission */
+
+/**
+ * Possible SSI application Events
+ */
+#define SSI_EVENT_TX_CMPLT      0   /* Data transmission complete */
+#define SSI_EVENT_RX_CMPLT      1   /* Data reception complete */
+#define SSI_EVENT_OVR_ERR       2   /* Overrun error occurred */
+#define SSI_EVENT_TIMEOUT       3   /* RX timeout occurred */
 
 /**
  * @SSI_DeviceMode
@@ -237,7 +259,12 @@ void SSI_DeInit(SSI_RegDef_t *pSSIx);
 
 void SSI_SendData(SSI_RegDef_t *pSSIx, void *pTxBuffer, uint32_t Len);
 void SSI_ReceiveData(SSI_RegDef_t *pSSIx, void *pRxBuffer, uint32_t Len);
+
+uint8_t SSI_SendDataIT(SSI_Handle_t *pSSIHandle, void *pTxBuffer, uint32_t Len);
+uint8_t SSI_ReceiveDataIT(SSI_Handle_t *pSSIHandle, void *pRxBuffer, uint32_t Len);
+
 uint8_t SSI_GetFlagStatus(SSI_RegDef_t *pSSIx, uint32_t Flag);
+
 
 /*
  * IRQ Configuration and ISR handling
@@ -245,13 +272,20 @@ uint8_t SSI_GetFlagStatus(SSI_RegDef_t *pSSIx, uint32_t Flag);
 
 void SSI_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
 void SSI_IRQPriorityConfig(uint8_t IRQNumber, uint8_t IRQPriority);
-void SSI_IRQHandling(SSI_RegDef_t *pHandle);
+void SSI_IRQHandling(SSI_Handle_t *pSSIHandle);
 
 
+void SSI_ClearOvrFlag(SSI_RegDef_t *pSSIx);
+void SSI_CloseTransmission(SSI_Handle_t *pSSIHandle);
+void SSI_CloseReception(SSI_Handle_t *pSSIHandle);
 
 /*
- * Other peripheral control APIs
+ * Application callback
  */
+
+void SSI_ApplicationEventCallback(SSI_Handle_t *pSSIHandle, uint8_t AppEv);
+
+
 
 
 

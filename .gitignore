@@ -100,3 +100,4 @@ doxygen/
 # Project-specific files to ignore
 CLAUDE.md
 slave.c
+slave_2.c

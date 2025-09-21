@@ -503,26 +503,40 @@ void GPIO_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
     if (EnorDi == ENABLE)
     {
         // Enable IRQ in NVIC using the NVIC_ENx registers
-        if (IRQNumber < 32) {
+        if (IRQNumber < 32)
+        {
             NVIC_EN0 |= (1 << IRQNumber);
-        } else if (IRQNumber < 64) {
+        }
+        else if (IRQNumber < 64)
+        {
             NVIC_EN1 |= (1 << (IRQNumber - 32));
-        } else if (IRQNumber < 96) {
+        }
+        else if (IRQNumber < 96)
+        {
             NVIC_EN2 |= (1 << (IRQNumber - 64));
-        } else if (IRQNumber < 128) {
+        }
+        else if (IRQNumber < 128)
+        {
             NVIC_EN3 |= (1 << (IRQNumber - 96));
         }
     }
     else
     {
         // Disable IRQ in NVIC using the NVIC_DISx registers
-        if (IRQNumber < 32) {
+        if (IRQNumber < 32)
+        {
             NVIC_DIS0 |= (1 << IRQNumber);
-        } else if (IRQNumber < 64) {
+        }
+        else if (IRQNumber < 64)
+        {
             NVIC_DIS1 |= (1 << (IRQNumber - 32));
-        } else if (IRQNumber < 96) {
+        }
+        else if (IRQNumber < 96)
+        {
             NVIC_DIS2 |= (1 << (IRQNumber - 64));
-        } else if (IRQNumber < 128) {
+        }
+        else if (IRQNumber < 128)
+        {
             NVIC_DIS3 |= (1 << (IRQNumber - 96));
         }
     }
