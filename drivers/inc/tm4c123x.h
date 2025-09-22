@@ -13,6 +13,9 @@
 #define DRIVERS_INC_TM4C123X_H_
 
 #include<stdint.h>
+#include<stddef.h>
+
+#define __weak   __attribute__((weak))
 
 /********************************** Memory Regions **********************************/
 #define FLASH_BASEADDR                          0x00000000U             /* Starting address of the 256 KB Flash memory, used for program code and constant data */
@@ -40,6 +43,36 @@
 /* Calculates the alias address for a specific bit in peripheral registers for atomic bit manipulation */
 #define BITBAND_PERIPH(address, bit)    ((PERIPH_BITBAND_ALIAS_START + (((uint32_t)(address) - PERIPH_BITBAND_REGION_START) * 32U) + ((bit) * 4U)))
 
+/********************************** IRQ Numbers **********************************/
+/*
+ * TM4C123GH6PM Interrupt Request (IRQ) Numbers
+ * From TM4C123GH6PM Datasheet Table 2-9: Exception Types
+ */
+
+/* SSI Interrupt Numbers */
+#define IRQ_NO_SSI0             7       /* SSI0 Interrupt */
+#define IRQ_NO_SSI1             34      /* SSI1 Interrupt */
+#define IRQ_NO_SSI2             57      /* SSI2 Interrupt */
+#define IRQ_NO_SSI3             58      /* SSI3 Interrupt */
+
+/* GPIO Interrupt Numbers */
+#define IRQ_NO_GPIOA            0       /* GPIO Port A Interrupt */
+#define IRQ_NO_GPIOB            1       /* GPIO Port B Interrupt */
+#define IRQ_NO_GPIOC            2       /* GPIO Port C Interrupt */
+#define IRQ_NO_GPIOD            3       /* GPIO Port D Interrupt */
+#define IRQ_NO_GPIOE            4       /* GPIO Port E Interrupt */
+#define IRQ_NO_GPIOF            30      /* GPIO Port F Interrupt */
+
+/* Other Common Peripherals */
+#define IRQ_NO_UART0            5       /* UART0 Interrupt */
+#define IRQ_NO_UART1            6       /* UART1 Interrupt */
+#define IRQ_NO_I2C0             8       /* I2C0 Master and Slave Interrupt */
+#define IRQ_NO_PWM0_FAULT       9       /* PWM0 Fault Interrupt */
+#define IRQ_NO_PWM0_GEN0        10      /* PWM0 Generator 0 Interrupt */
+#define IRQ_NO_TIMER0A          19      /* 16/32-Bit Timer 0A Interrupt */
+#define IRQ_NO_TIMER0B          20      /* 16/32-Bit Timer 0B Interrupt */
+#define IRQ_NO_TIMER1A          21      /* 16/32-Bit Timer 1A Interrupt */
+#define IRQ_NO_TIMER1B          22      /* 16/32-Bit Timer 1B Interrupt */
 
 /********************************** SYSCTL Register **********************************/
 #define SYSCTL_BASEADDR                         0x400FE000U
@@ -448,6 +481,39 @@ typedef struct {
     volatile uint32_t DMACTL;  /* DMA Control (offset 0x024) */
 } SSI_RegDef_t;
 
+/* UART Register Structure */
+typedef struct {
+    volatile uint32_t DR;          /* Data Register (offset 0x000) */
+    union {
+        volatile uint32_t RSR;     /* Receive Status Register (offset 0x004) */
+        volatile uint32_t ECR;     /* Error Clear Register (offset 0x004) */
+    };
+    uint32_t RESERVED0[4];         /* 0x008-0x014: Reserved */
+    volatile uint32_t FR;          /* Flag Register (offset 0x018) */
+    uint32_t RESERVED1;            /* 0x01C: Reserved */
+    volatile uint32_t ILPR;        /* IrDA Low-Power Register (offset 0x020) */
+    volatile uint32_t IBRD;        /* Integer Baud-Rate Divisor (offset 0x024) */
+    volatile uint32_t FBRD;        /* Fractional Baud-Rate Divisor (offset 0x028) */
+    volatile uint32_t LCRH;        /* Line Control (offset 0x02C) */
+    volatile uint32_t CTL;         /* Control (offset 0x030) */
+    volatile uint32_t IFLS;        /* Interrupt FIFO Level Select (offset 0x034) */
+    volatile uint32_t IM;          /* Interrupt Mask (offset 0x038) */
+    volatile uint32_t RIS;         /* Raw Interrupt Status (offset 0x03C) */
+    volatile uint32_t MIS;         /* Masked Interrupt Status (offset 0x040) */
+    volatile uint32_t ICR;         /* Interrupt Clear (offset 0x044) */
+    volatile uint32_t DMACTL;      /* DMA Control (offset 0x048) */
+} UART_RegDef_t;
+
+/********************************** UART Base Addresses **********************************/
+#define UART0_BASEADDR              (PERIPH_BASEADDR + 0xC000)   // 0x4000C000
+#define UART1_BASEADDR              (PERIPH_BASEADDR + 0xD000)   // 0x4000D000
+#define UART2_BASEADDR              (PERIPH_BASEADDR + 0xE000)   // 0x4000E000
+#define UART3_BASEADDR              (PERIPH_BASEADDR + 0xF000)   // 0x4000F000
+#define UART4_BASEADDR              (PERIPH_BASEADDR + 0x10000)  // 0x40010000
+#define UART5_BASEADDR              (PERIPH_BASEADDR + 0x11000)  // 0x40011000
+#define UART6_BASEADDR              (PERIPH_BASEADDR + 0x12000)  // 0x40012000
+#define UART7_BASEADDR              (PERIPH_BASEADDR + 0x13000)  // 0x40013000
+
 
 /****************************************************************Peripheral definitions typecasted**************************************************************************/
 /* Peripheral definitions typecasted */
@@ -465,6 +531,22 @@ typedef struct {
 #define SYSCTL_SLEEPCLK  ((SYSCTL_SleepModeClkGatingRegDef_t*)(SYSCTL_BASEADDR + 0x700))
 #define SYSCTL_DSLPCLK   ((SYSCTL_DeepSleepModeClkGatingRegDef_t*)(SYSCTL_BASEADDR + 0x800))
 #define SYSCTL_PR        ((SYSCTL_PeriphReadyRegDef_t*)(SYSCTL_BASEADDR + 0xA00))
+
+/* SSI Peripheral Instances */
+#define SSI0             ((SSI_RegDef_t*)SSI0_BASEADDR)
+#define SSI1             ((SSI_RegDef_t*)SSI1_BASEADDR)
+#define SSI2             ((SSI_RegDef_t*)SSI2_BASEADDR)
+#define SSI3             ((SSI_RegDef_t*)SSI3_BASEADDR)
+
+/* UART Peripheral Instances */
+#define UART0            ((UART_RegDef_t*)UART0_BASEADDR)
+#define UART1            ((UART_RegDef_t*)UART1_BASEADDR)
+#define UART2            ((UART_RegDef_t*)UART2_BASEADDR)
+#define UART3            ((UART_RegDef_t*)UART3_BASEADDR)
+#define UART4            ((UART_RegDef_t*)UART4_BASEADDR)
+#define UART5            ((UART_RegDef_t*)UART5_BASEADDR)
+#define UART6            ((UART_RegDef_t*)UART6_BASEADDR)
+#define UART7            ((UART_RegDef_t*)UART7_BASEADDR)
 
 /* Clock enable macros for GPIOx peripherals */
 #define GPIOA_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<0)
@@ -508,6 +590,15 @@ typedef struct {
 #define UART6_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 6)
 #define UART7_PCLK_EN() (SYSCTL_RUNCLK->RCGCUART |= 1U << 7)
 
+/* Clock disable macros for UARTx peripherals */
+#define UART0_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~(1U << 0))
+#define UART1_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~(1U << 1))
+#define UART2_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~(1U << 2))
+#define UART3_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~(1U << 3))
+#define UART4_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~(1U << 4))
+#define UART5_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~(1U << 5))
+#define UART6_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~(1U << 6))
+#define UART7_PCLK_DIS() (SYSCTL_RUNCLK->RCGCUART &= ~(1U << 7))
 
 /*
  * Clock Enable macros for SSIx peripherals, implements 3 variants of SPI
