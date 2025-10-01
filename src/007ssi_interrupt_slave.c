@@ -324,6 +324,7 @@ int main(void)
 
         // Read characters until null terminator with proper timing
         uint8_t msg_len = 0;
+        uint8_t stored_count = 0;
         for(uint8_t i = 0; i < 20; i++) {  // Reasonable limit for message length
             // Simple blocking SPI exchange
             SSI_SendData(SSI2, &dummy, 1);      // Send dummy byte to generate clock
@@ -334,9 +335,12 @@ int main(void)
 
             // Only store valid characters (not null on first read)
             if(ReadByte != '\0' || i > 0) {
-                RcvBuff[i] = ReadByte;
+                if(stored_count < MAX_LEN - 1) {
+                    RcvBuff[stored_count] = ReadByte;
+                    stored_count++;
+                }
                 if(ReadByte == '\0') {
-                    msg_len = i;
+                    msg_len = stored_count - 1;  // Exclude the null terminator from length
                     break;
                 }
             } else if(i == 0 && ReadByte == '\0') {
@@ -347,9 +351,14 @@ int main(void)
             }
         }
 
-        // Ensure null termination
-        if(msg_len < MAX_LEN - 1) {
-            RcvBuff[msg_len] = '\0';
+        // Set msg_len if no terminator was found
+        if(msg_len == 0 && stored_count > 0) {
+            msg_len = stored_count;
+        }
+
+        // Ensure null termination for partial messages
+        if(stored_count > 0 && stored_count < MAX_LEN) {
+            RcvBuff[stored_count] = '\0';
         }
 
         // Print received message
