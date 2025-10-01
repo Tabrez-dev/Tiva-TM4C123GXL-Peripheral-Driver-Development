@@ -82,16 +82,19 @@ static void W25QXX_GPIO_Init(void)
     ssiPins.GPIO_PinConfig.GPIO_PinSlewRate    = GPIO_SLEW_OFF;
     ssiPins.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PUPD_NONE;
 
-    // Configure PB4 (SSI2CLK)
+    // Configure PB4 (SSI2CLK) - OUTPUT
     ssiPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_4;
+    ssiPins.GPIO_PinConfig.GPIO_PinAltDir = GPIO_DIR_OUT;  // Master drives clock
     GPIO_Init(&ssiPins);
 
     // Configure PB6 (SSI2RX) - MISO
     ssiPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_6;
+    ssiPins.GPIO_PinConfig.GPIO_PinAltDir = GPIO_DIR_IN;   // Master receives data
     GPIO_Init(&ssiPins);
 
     // Configure PB7 (SSI2TX) - MOSI
     ssiPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_7;
+    ssiPins.GPIO_PinConfig.GPIO_PinAltDir = GPIO_DIR_OUT;  // Master sends data
     GPIO_Init(&ssiPins);
 
     // Configure PB5 (CS) - Manual control as GPIO output

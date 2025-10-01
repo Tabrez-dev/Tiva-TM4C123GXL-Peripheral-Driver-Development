@@ -519,6 +519,10 @@ void GPIO_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
         {
             NVIC_EN3 |= (1 << (IRQNumber - 96));
         }
+        else if (IRQNumber < 160)
+        {
+            NVIC_EN4 |= (1 << (IRQNumber - 128));
+        }
     }
     else
     {
@@ -538,6 +542,10 @@ void GPIO_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
         else if (IRQNumber < 128)
         {
             NVIC_DIS3 |= (1 << (IRQNumber - 96));
+        }
+        else if (IRQNumber < 160)
+        {
+            NVIC_DIS4 |= (1 << (IRQNumber - 128));
         }
     }
 }

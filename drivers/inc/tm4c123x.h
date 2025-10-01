@@ -570,11 +570,6 @@ typedef struct {
 #define I2C2_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= 1U<<2)
 #define I2C3_PCLK_EN() (SYSCTL_RUNCLK->RCGCI2C |= 1U<<3)
 
-/* SSI Peripheral Instances */
-#define SSI0    ((SSI_RegDef_t*)SSI0_BASEADDR)
-#define SSI1    ((SSI_RegDef_t*)SSI1_BASEADDR)
-#define SSI2    ((SSI_RegDef_t*)SSI2_BASEADDR)
-#define SSI3    ((SSI_RegDef_t*)SSI3_BASEADDR)
 
 /*
  * Clock Enable macros for UARTx peripherals

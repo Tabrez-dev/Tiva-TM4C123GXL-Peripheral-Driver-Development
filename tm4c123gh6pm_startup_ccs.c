@@ -34,8 +34,8 @@ static void NmiSR(void);
 static void FaultISR(void);
 static void IntDefaultHandler(void);
 void __attribute__((weak)) GPIOF_IRQHandler(void);
-void __attribute__((weak)) SSI2_IRQHandler(void);
-void __attribute__((weak)) GPIOD_IRQHandler(void);
+void __attribute__((weak, alias("IntDefaultHandler"))) SSI2_IRQHandler(void);
+void __attribute__((weak, alias("IntDefaultHandler"))) GPIOD_IRQHandler(void);
 //*****************************************************************************
 //
 // External declaration for the reset handler that is to be called when the
