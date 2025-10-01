@@ -45,6 +45,7 @@
 
 #include "tm4c123x_ssi_driver.h"
 #include "tm4c123x_uart_driver.h"
+#include "tm4c123x_gpio_driver.h"
 #include <string.h>
 
 /* Handle structures */
@@ -176,10 +177,12 @@ void UART1_GPIOInits(void)
 
     //3. Configure PB0 (UART1RX) - not used in this application
     uartPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_0;
+    uartPins.GPIO_PinConfig.GPIO_PinAltDir = GPIO_DIR_IN;
     GPIO_Init(&uartPins);
 
     //4. Configure PB1 (UART1TX)
     uartPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_1;
+    uartPins.GPIO_PinConfig.GPIO_PinAltDir = GPIO_DIR_OUT;
     GPIO_Init(&uartPins);
 }
 

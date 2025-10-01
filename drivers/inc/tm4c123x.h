@@ -504,15 +504,6 @@ typedef struct {
     volatile uint32_t DMACTL;      /* DMA Control (offset 0x048) */
 } UART_RegDef_t;
 
-/********************************** UART Base Addresses **********************************/
-#define UART0_BASEADDR              (PERIPH_BASEADDR + 0xC000)   // 0x4000C000
-#define UART1_BASEADDR              (PERIPH_BASEADDR + 0xD000)   // 0x4000D000
-#define UART2_BASEADDR              (PERIPH_BASEADDR + 0xE000)   // 0x4000E000
-#define UART3_BASEADDR              (PERIPH_BASEADDR + 0xF000)   // 0x4000F000
-#define UART4_BASEADDR              (PERIPH_BASEADDR + 0x10000)  // 0x40010000
-#define UART5_BASEADDR              (PERIPH_BASEADDR + 0x11000)  // 0x40011000
-#define UART6_BASEADDR              (PERIPH_BASEADDR + 0x12000)  // 0x40012000
-#define UART7_BASEADDR              (PERIPH_BASEADDR + 0x13000)  // 0x40013000
 
 
 /****************************************************************Peripheral definitions typecasted**************************************************************************/
@@ -539,14 +530,14 @@ typedef struct {
 #define SSI3             ((SSI_RegDef_t*)SSI3_BASEADDR)
 
 /* UART Peripheral Instances */
-#define UART0            ((UART_RegDef_t*)UART0_BASEADDR)
-#define UART1            ((UART_RegDef_t*)UART1_BASEADDR)
-#define UART2            ((UART_RegDef_t*)UART2_BASEADDR)
-#define UART3            ((UART_RegDef_t*)UART3_BASEADDR)
-#define UART4            ((UART_RegDef_t*)UART4_BASEADDR)
-#define UART5            ((UART_RegDef_t*)UART5_BASEADDR)
-#define UART6            ((UART_RegDef_t*)UART6_BASEADDR)
-#define UART7            ((UART_RegDef_t*)UART7_BASEADDR)
+#define UART0            ((UART_RegDef_t*)UART_0_BASEADDR)
+#define UART1            ((UART_RegDef_t*)UART_1_BASEADDR)
+#define UART2            ((UART_RegDef_t*)UART_2_BASEADDR)
+#define UART3            ((UART_RegDef_t*)UART_3_BASEADDR)
+#define UART4            ((UART_RegDef_t*)UART_4_BASEADDR)
+#define UART5            ((UART_RegDef_t*)UART_5_BASEADDR)
+#define UART6            ((UART_RegDef_t*)UART_6_BASEADDR)
+#define UART7            ((UART_RegDef_t*)UART_7_BASEADDR)
 
 /* Clock enable macros for GPIOx peripherals */
 #define GPIOA_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<0)
