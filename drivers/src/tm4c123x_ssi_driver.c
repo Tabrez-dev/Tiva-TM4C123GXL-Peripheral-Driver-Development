@@ -6,6 +6,19 @@
  */
 
 #include "tm4c123x_ssi_driver.h"
+#include <stdio.h>
+
+/* External timestamp function for telemetry */
+extern uint32_t GetTick(void);
+
+/* External UART functions for telemetry (safe from ISR) */
+extern void UART1_SendString(const char *str);
+extern void UART1_SendNumber(uint32_t num);
+extern void UART1_SendChar(char c);
+
+/* External statistics variables */
+extern uint32_t queueMaxDepth;
+extern uint32_t totalOperations;
 
 static void SSI_TXE_InterruptHandle(SSI_Handle_t *pSSIHandle);
 static void SSI_RXNE_InterruptHandle(SSI_Handle_t *pSSIHandle);
@@ -465,6 +478,13 @@ void SSI_IRQHandling(SSI_Handle_t *pSSIHandle)
 {
     // Enter ISR
 
+    // Check if this is a flash interface - use specialized handler
+    if (pSSIHandle->isFlashInterface) {
+        SSI_FlashInterruptHandler(pSSIHandle);
+        return;
+    }
+
+    // Standard SSI interrupt handling for non-flash interfaces
     // Understand which event caused interrupt to trigger (check SSIMIS)
     uint32_t temp1, temp2;
 
@@ -711,4 +731,796 @@ void SSI_CloseReception(SSI_Handle_t *pSSIHandle)
 __weak void SSI_ApplicationEventCallback(SSI_Handle_t *pSSIHandle, uint8_t AppEv)
 {
     // This is a weak implementation. The application may override this function.
+}
+
+/***************************************************************************
+ * Flash Multi-Client Resource Manager Implementation
+ ***************************************************************************/
+
+/***************************************************************************
+ * @fn                          - SSI_FlashResourceManagerInit
+ *
+ * @brief                       - Initializes the flash resource manager for multi-client operation
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ *
+ * @return                      - none
+ *
+ * @Note                        - Must be called after SSI_Init() but before any flash operations
+ */
+void SSI_FlashResourceManagerInit(SSI_Handle_t *pSSIHandle)
+{
+    FlashResourceManager_t *pManager = &pSSIHandle->flashManager;
+
+    // Initialize queue
+    pManager->queueHead = 0;
+    pManager->queueTail = 0;
+    pManager->queueCount = 0;
+
+    // Initialize state machine
+    pManager->pCurrentOp = 0;
+    pManager->currentState = FLASH_STATE_IDLE;
+    pManager->cmdIndex = 0;
+    pManager->cmdLength = 0;
+
+    // Initialize status polling
+    pManager->statusPollCount = 0;
+    pManager->lastStatus = 0;
+
+    // Initialize synchronization
+    pManager->eventFlags = 0;
+    pManager->resourceLocked = 0;
+
+    // Clear command buffer
+    for (uint8_t i = 0; i < 8; i++) {
+        pManager->cmdBuffer[i] = 0;
+    }
+
+    // Mark this SSI interface as flash-enabled
+    pSSIHandle->isFlashInterface = 1;
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashInit
+ *
+ * @brief                       - Complete flash interface initialization
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ *
+ * @return                      - none
+ *
+ * @Note                        - Initializes SSI peripheral and flash resource manager
+ */
+void SSI_FlashInit(SSI_Handle_t *pSSIHandle)
+{
+    // Initialize the SSI peripheral first
+    SSI_Init(pSSIHandle);
+
+    // Initialize flash resource manager
+    SSI_FlashResourceManagerInit(pSSIHandle);
+
+    // DON'T enable SSI interrupts here - they will be enabled when an operation starts
+    // Enabling them now causes immediate interrupt with no operation queued
+    // pSSIHandle->pSSIx->IM |= (1U << SSI_SSIIM_TXIM) | (1U << SSI_SSIIM_RXIM);
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashQueueOperation
+ *
+ * @brief                       - Queues a flash operation for execution
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ * @param[in]                   - pRequest: Pointer to the flash operation request
+ *
+ * @return                      - 0: Success, 1: Queue full, 2: Invalid request
+ *
+ * @Note                        - Thread-safe operation queueing for multi-client access
+ */
+uint8_t SSI_FlashQueueOperation(SSI_Handle_t *pSSIHandle, FlashRequest_t *pRequest)
+{
+    if (!pSSIHandle->isFlashInterface || !pRequest) {
+        return 2; // Invalid request
+    }
+
+    FlashResourceManager_t *pManager = &pSSIHandle->flashManager;
+
+    // Disable interrupts for atomic queue operation
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+
+    // Check if queue is full
+    if (pManager->queueCount >= FLASH_QUEUE_SIZE) {
+        __set_PRIMASK(primask);
+        UART1_SendString("[ResMan:SSI_FlashQueueOperation][");
+        UART1_SendNumber(GetTick());
+        UART1_SendString("ms][C");
+        UART1_SendNumber(pRequest->clientId);
+        UART1_SendString("] Queue FULL!\n");
+        return 1; // Queue full
+    }
+
+    // Copy request to queue
+    pManager->queue[pManager->queueTail] = *pRequest;
+    pManager->queue[pManager->queueTail].status = FLASH_STATUS_PENDING;
+
+    // Update queue pointers
+    uint8_t queuePos = pManager->queueTail;
+    pManager->queueTail = (pManager->queueTail + 1) % FLASH_QUEUE_SIZE;
+    pManager->queueCount++;
+
+    // Update queue statistics
+    if (pManager->queueCount > queueMaxDepth) {
+        queueMaxDepth = pManager->queueCount;
+    }
+    totalOperations++;
+
+    // Set queue ready event flag
+    SSI_FlashSetEventFlag(pSSIHandle, FLASH_EVENT_QUEUE_READY);
+
+    UART1_SendString("[ResMan:SSI_FlashQueueOperation][");
+    UART1_SendNumber(GetTick());
+    UART1_SendString("ms][C");
+    UART1_SendNumber(pRequest->clientId);
+    UART1_SendString("] Queued (pos=");
+    UART1_SendNumber(queuePos);
+    UART1_SendString(", depth=");
+    UART1_SendNumber(pManager->queueCount);
+    UART1_SendString(")\n");
+
+    // Re-enable interrupts (IMPORTANT: enable unconditionally, don't restore old state)
+    // This ensures SSI_FlashProcessQueue runs with interrupts enabled
+    __enable_irq();
+
+    // Trigger queue processing if resource is available
+    if (pManager->currentState == FLASH_STATE_IDLE) {
+        SSI_FlashProcessQueue(pSSIHandle);
+        UART1_SendString("[ResMan:SSI_FlashQueueOperation] ProcessQueue completed\n");
+    } else {
+        UART1_SendString("[ResMan:SSI_FlashQueueOperation][");
+        UART1_SendNumber(GetTick());
+        UART1_SendString("ms][C");
+        UART1_SendNumber(pRequest->clientId);
+        UART1_SendString("] WAITING (active=C");
+        UART1_SendNumber(pManager->pCurrentOp->clientId);
+        UART1_SendString(")\n");
+    }
+
+    UART1_SendString("[ResMan:SSI_FlashQueueOperation] Returning...\n");
+    return 0; // Success
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashProcessQueue
+ *
+ * @brief                       - Processes the next operation in the flash queue
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ *
+ * @return                      - none
+ *
+ * @Note                        - Called from interrupt context and main thread
+ */
+void SSI_FlashProcessQueue(SSI_Handle_t *pSSIHandle)
+{
+    FlashResourceManager_t *pManager = &pSSIHandle->flashManager;
+
+    // Check if resource is busy or queue is empty
+    if (pManager->currentState != FLASH_STATE_IDLE || pManager->queueCount == 0) {
+        return;
+    }
+
+    // Disable interrupts for atomic queue operation
+    __disable_irq();
+
+    // Get next operation from queue
+    pManager->pCurrentOp = &pManager->queue[pManager->queueHead];
+    pManager->queueHead = (pManager->queueHead + 1) % FLASH_QUEUE_SIZE;
+    pManager->queueCount--;
+
+    // Re-enable interrupts (IMPORTANT: always enable, don't restore old state)
+    __enable_irq();
+
+    // Mark operation as active
+    pManager->pCurrentOp->status = FLASH_STATUS_ACTIVE;
+
+    // Initialize command sequence based on operation type
+    switch (pManager->pCurrentOp->opType) {
+        case FLASH_OP_READ_ID:
+            pManager->cmdBuffer[0] = W25QXX_CMD_READ_JEDEC_ID;
+            pManager->cmdLength = 1;
+            break;
+
+        case FLASH_OP_READ_STATUS:
+            pManager->cmdBuffer[0] = W25QXX_CMD_READ_STATUS_REG1;
+            pManager->cmdLength = 1;
+            break;
+
+        case FLASH_OP_WRITE_ENABLE:
+            pManager->cmdBuffer[0] = W25QXX_CMD_WRITE_ENABLE;
+            pManager->cmdLength = 1;
+            break;
+
+        case FLASH_OP_PAGE_PROGRAM:
+            pManager->cmdBuffer[0] = W25QXX_CMD_PAGE_PROGRAM;
+            pManager->cmdBuffer[1] = (uint8_t)((pManager->pCurrentOp->address >> 16) & 0xFF);
+            pManager->cmdBuffer[2] = (uint8_t)((pManager->pCurrentOp->address >> 8) & 0xFF);
+            pManager->cmdBuffer[3] = (uint8_t)(pManager->pCurrentOp->address & 0xFF);
+            pManager->cmdLength = 4;
+            break;
+
+        case FLASH_OP_SECTOR_ERASE:
+            pManager->cmdBuffer[0] = W25QXX_CMD_SECTOR_ERASE_4KB;
+            pManager->cmdBuffer[1] = (uint8_t)((pManager->pCurrentOp->address >> 16) & 0xFF);
+            pManager->cmdBuffer[2] = (uint8_t)((pManager->pCurrentOp->address >> 8) & 0xFF);
+            pManager->cmdBuffer[3] = (uint8_t)(pManager->pCurrentOp->address & 0xFF);
+            pManager->cmdLength = 4;
+            break;
+
+        case FLASH_OP_READ_DATA:
+            pManager->cmdBuffer[0] = W25QXX_CMD_READ_DATA;
+            pManager->cmdBuffer[1] = (uint8_t)((pManager->pCurrentOp->address >> 16) & 0xFF);
+            pManager->cmdBuffer[2] = (uint8_t)((pManager->pCurrentOp->address >> 8) & 0xFF);
+            pManager->cmdBuffer[3] = (uint8_t)(pManager->pCurrentOp->address & 0xFF);
+            pManager->cmdLength = 4;
+            break;
+
+        default:
+            // Invalid operation - mark as error
+            pManager->pCurrentOp->status = FLASH_STATUS_ERROR;
+            pManager->currentState = FLASH_STATE_ERROR;
+            SSI_FlashSetEventFlag(pSSIHandle, FLASH_EVENT_ERROR);
+            return;
+    }
+
+    // Start command phase
+    pManager->currentState = FLASH_STATE_CMD_PHASE;
+    pManager->cmdIndex = 0;
+
+    UART1_SendString("[ResMan:SSI_FlashProcessQueue][");
+    UART1_SendNumber(GetTick());
+    UART1_SendString("ms][C");
+    UART1_SendNumber(pManager->pCurrentOp->clientId);
+    UART1_SendString("] Starting (IDLE->CMD)\n");
+
+    // CS is now hardware-controlled by SSI2FSS (PB5)
+
+    // Begin transmission by sending first command byte
+    pSSIHandle->pSSIx->DR = pManager->cmdBuffer[pManager->cmdIndex++];
+
+    // Enable TX and RX interrupts for flash operations (AFTER first DR write)
+    // Directly set bits 2 and 3 (RXIM and TXIM)
+    pSSIHandle->pSSIx->IM = 0x0C;  // Bits 2 and 3 for RX and TX interrupts
+
+    uint32_t im_after_write = pSSIHandle->pSSIx->IM;
+
+    // DON'T print anything here - check if UART corrupts IM
+
+    uint32_t im_after_delay = pSSIHandle->pSSIx->IM;
+
+    // Now print both values
+    UART1_SendString("[DEBUG] IM immediately after write=");
+    UART1_SendNumber(im_after_write);
+    UART1_SendString(", after delay=");
+    UART1_SendNumber(im_after_delay);
+    UART1_SendString(", PRIMASK=");
+    UART1_SendNumber(__get_PRIMASK());
+    UART1_SendString("\n");
+
+    // Check NVIC pending register for SSI2 (IRQ 57, bit 25 of ISPR1)
+    #define NVIC_ISPR1_ADDR 0xE000E204
+    uint32_t ispr1_val = *((volatile uint32_t *)NVIC_ISPR1_ADDR);
+    UART1_SendString("[DEBUG] NVIC_ISPR1=0x");
+    UART1_SendNumber(ispr1_val);
+    UART1_SendString(" (bit 25 for SSI2), RIS=0x");
+    UART1_SendNumber(pSSIHandle->pSSIx->RIS);
+    UART1_SendString("\n");
+
+    // Manually kick the state machine since TX interrupt won't fire immediately
+    // (TX FIFO not yet half-empty after writing just 1 byte)
+    SSI_FlashStateMachine(pSSIHandle);
+
+    UART1_SendString("[ResMan:SSI_FlashProcessQueue] State machine returned\n");
+    UART1_SendString("[DEBUG] SR=0x");
+    UART1_SendNumber(pSSIHandle->pSSIx->SR);
+    UART1_SendString(", MIS=0x");
+    UART1_SendNumber(pSSIHandle->pSSIx->MIS);
+    UART1_SendString("\n");
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashSetEventFlag
+ *
+ * @brief                       - Sets an event flag in the flash resource manager
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ * @param[in]                   - flag: Event flag to set
+ *
+ * @return                      - none
+ *
+ * @Note                        - Atomic flag setting for interrupt communication
+ */
+void SSI_FlashSetEventFlag(SSI_Handle_t *pSSIHandle, uint32_t flag)
+{
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    pSSIHandle->flashManager.eventFlags |= flag;
+    __set_PRIMASK(primask);
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashGetEventFlags
+ *
+ * @brief                       - Gets current event flags from flash resource manager
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ *
+ * @return                      - Current event flags
+ *
+ * @Note                        - Atomic flag reading for interrupt communication
+ */
+uint32_t SSI_FlashGetEventFlags(SSI_Handle_t *pSSIHandle)
+{
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    uint32_t flags = pSSIHandle->flashManager.eventFlags;
+    __set_PRIMASK(primask);
+    return flags;
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashClearEventFlag
+ *
+ * @brief                       - Clears an event flag in the flash resource manager
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ * @param[in]                   - flag: Event flag to clear
+ *
+ * @return                      - none
+ *
+ * @Note                        - Atomic flag clearing for interrupt communication
+ */
+void SSI_FlashClearEventFlag(SSI_Handle_t *pSSIHandle, uint32_t flag)
+{
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    pSSIHandle->flashManager.eventFlags &= ~flag;
+    __set_PRIMASK(primask);
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashIsResourceAvailable
+ *
+ * @brief                       - Checks if flash resource is available for new operations
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ *
+ * @return                      - 1: Available, 0: Busy
+ *
+ * @Note                        - Used by clients to check resource availability
+ */
+uint8_t SSI_FlashIsResourceAvailable(SSI_Handle_t *pSSIHandle)
+{
+    return (pSSIHandle->flashManager.currentState == FLASH_STATE_IDLE) ? 1 : 0;
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashStateMachine
+ *
+ * @brief                       - Executes the flash operation state machine
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ *
+ * @return                      - none
+ *
+ * @Note                        - Called from interrupt handler to progress flash operations
+ */
+void SSI_FlashStateMachine(SSI_Handle_t *pSSIHandle)
+{
+    FlashResourceManager_t *pManager = &pSSIHandle->flashManager;
+    volatile FlashRequest_t *pOp = pManager->pCurrentOp;
+
+    // Debug: Log state machine entry
+    static uint32_t smCallCount = 0;
+    if (smCallCount < 20) {  // Limit to first 20 calls
+        UART1_SendString("[SM:");
+        UART1_SendNumber(smCallCount++);
+        UART1_SendString("] state=");
+        UART1_SendNumber(pManager->currentState);
+        UART1_SendString(", idx=");
+        UART1_SendNumber(pManager->cmdIndex);
+        UART1_SendString("\n");
+    }
+
+    if (!pOp) return;
+
+    switch (pManager->currentState) {
+        case FLASH_STATE_CMD_PHASE:
+            // Continue sending command bytes
+            if (pManager->cmdIndex < pManager->cmdLength) {
+                pSSIHandle->pSSIx->DR = pManager->cmdBuffer[pManager->cmdIndex++];
+            } else {
+                // Command phase complete
+                SSI_FlashSetEventFlag(pSSIHandle, FLASH_EVENT_CMD_COMPLETE);
+
+                // Determine next phase based on operation type
+                switch (pOp->opType) {
+                    case FLASH_OP_READ_ID:
+                    case FLASH_OP_READ_STATUS:
+                    case FLASH_OP_READ_DATA:
+                        // Read operations - move to data receive phase
+                        // CRITICAL: Drain RX FIFO of garbage bytes from command phase
+                        while (pSSIHandle->pSSIx->SR & (1 << SSI_SSISR_RNE)) {
+                            volatile uint32_t dummy = pSSIHandle->pSSIx->DR;
+                            (void)dummy; // Suppress unused variable warning
+                        }
+                        pManager->currentState = FLASH_STATE_DATA_PHASE;
+                        pManager->cmdIndex = 0; // Reuse as data index
+                        break;
+
+                    case FLASH_OP_WRITE_ENABLE:
+                        // Simple command - operation complete
+                        pManager->currentState = FLASH_STATE_COMPLETE;
+                        break;
+
+                    case FLASH_OP_PAGE_PROGRAM:
+                        // Program operation - move to data send phase
+                        pManager->currentState = FLASH_STATE_DATA_PHASE;
+                        pManager->cmdIndex = 0; // Reuse as data index
+                        break;
+
+                    case FLASH_OP_SECTOR_ERASE:
+                        // Erase operation - move to status polling
+                        pManager->currentState = FLASH_STATE_STATUS_POLL;
+                        pManager->statusPollCount = 0;
+                        break;
+
+                    default:
+                        pManager->currentState = FLASH_STATE_ERROR;
+                        break;
+                }
+            }
+            break;
+
+        case FLASH_STATE_DATA_PHASE:
+            switch (pOp->opType) {
+                case FLASH_OP_READ_ID:
+                    // Read 3 bytes of JEDEC ID
+                    if (pManager->cmdIndex < 3) {
+                        // Check if TX FIFO has space - send dummy byte
+                        if (pSSIHandle->pSSIx->SR & (1 << SSI_SSISR_TNF)) {
+                            pSSIHandle->pSSIx->DR = 0xFF; // Dummy byte to clock data
+                        }
+                        // Check if RX FIFO has data - read received byte
+                        if (pSSIHandle->pSSIx->SR & (1 << SSI_SSISR_RNE)) {
+                            if (pOp->pData) {
+                                pOp->pData[pManager->cmdIndex] = (uint8_t)(pSSIHandle->pSSIx->DR & 0xFF);
+                            } else {
+                                volatile uint32_t dummy = pSSIHandle->pSSIx->DR; // Drain FIFO
+                                (void)dummy;
+                            }
+                            pManager->cmdIndex++;
+                        }
+                    } else {
+                        pManager->currentState = FLASH_STATE_COMPLETE;
+                    }
+                    break;
+
+                case FLASH_OP_READ_STATUS:
+                    // Read 1 byte of status
+                    if (pManager->cmdIndex < 1) {
+                        // Check if TX FIFO has space - send dummy byte
+                        if (pSSIHandle->pSSIx->SR & (1 << SSI_SSISR_TNF)) {
+                            pSSIHandle->pSSIx->DR = 0xFF; // Dummy byte
+                        }
+                        // Check if RX FIFO has data - read status byte
+                        if (pSSIHandle->pSSIx->SR & (1 << SSI_SSISR_RNE)) {
+                            pManager->lastStatus = (uint8_t)(pSSIHandle->pSSIx->DR & 0xFF);
+                            if (pOp->pData) {
+                                pOp->pData[0] = pManager->lastStatus;
+                            }
+                            pManager->cmdIndex++;
+                        }
+                    } else {
+                        pManager->currentState = FLASH_STATE_COMPLETE;
+                    }
+                    break;
+
+                case FLASH_OP_READ_DATA:
+                    // Read data bytes
+                    if (pManager->cmdIndex < pOp->dataLen) {
+                        // Check if TX FIFO has space - send dummy byte
+                        if (pSSIHandle->pSSIx->SR & (1 << SSI_SSISR_TNF)) {
+                            pSSIHandle->pSSIx->DR = 0xFF; // Dummy byte to clock data
+                        }
+                        // Check if RX FIFO has data - read received byte
+                        if (pSSIHandle->pSSIx->SR & (1 << SSI_SSISR_RNE)) {
+                            if (pOp->pData) {
+                                pOp->pData[pManager->cmdIndex] = (uint8_t)(pSSIHandle->pSSIx->DR & 0xFF);
+                            } else {
+                                volatile uint32_t dummy = pSSIHandle->pSSIx->DR; // Drain FIFO
+                                (void)dummy;
+                            }
+                            pManager->cmdIndex++;
+                        }
+                    } else {
+                        pManager->currentState = FLASH_STATE_COMPLETE;
+                    }
+                    break;
+
+                case FLASH_OP_PAGE_PROGRAM:
+                    // Send data bytes
+                    if (pManager->cmdIndex < pOp->dataLen) {
+                        uint8_t dataByte = pOp->pData ? pOp->pData[pManager->cmdIndex] : 0xFF;
+                        pSSIHandle->pSSIx->DR = dataByte;
+                        pManager->cmdIndex++;
+                    } else {
+                        // Data phase complete - move to status polling
+                        pManager->currentState = FLASH_STATE_STATUS_POLL;
+                        pManager->statusPollCount = 0;
+                    }
+                    break;
+
+                default:
+                    pManager->currentState = FLASH_STATE_ERROR;
+                    break;
+            }
+            break;
+
+        case FLASH_STATE_STATUS_POLL:
+            // Poll status register for busy bit
+            if (pManager->statusPollCount == 0) {
+                // Send read status command
+                pSSIHandle->pSSIx->DR = W25QXX_CMD_READ_STATUS_REG1;
+                pManager->statusPollCount++;
+            } else if (pManager->statusPollCount == 1) {
+                // Send dummy byte and read status
+                pSSIHandle->pSSIx->DR = 0xFF;
+                pManager->lastStatus = (uint8_t)(pSSIHandle->pSSIx->DR & 0xFF);
+
+                // Check if operation is complete (BUSY bit clear)
+                if ((pManager->lastStatus & W25QXX_STATUS_BUSY) == 0) {
+                    pManager->currentState = FLASH_STATE_COMPLETE;
+                    SSI_FlashSetEventFlag(pSSIHandle, FLASH_EVENT_STATUS_READY);
+                } else {
+                    // Reset for next poll cycle
+                    pManager->statusPollCount = 0;
+
+                    // Check for timeout
+                    uint32_t timeout = (pOp->opType == FLASH_OP_SECTOR_ERASE) ?
+                                     FLASH_TIMEOUT_SECTOR_ERASE : FLASH_TIMEOUT_PAGE_PROGRAM;
+
+                    if (pManager->statusPollCount > timeout) {
+                        pOp->status = FLASH_STATUS_TIMEOUT;
+                        pManager->currentState = FLASH_STATE_ERROR;
+                    }
+                }
+            }
+            break;
+
+        case FLASH_STATE_COMPLETE:
+            // CS is hardware-controlled, no manual control needed
+
+            // Operation completed successfully
+            pOp->status = FLASH_STATUS_COMPLETE;
+            SSI_FlashSetEventFlag(pSSIHandle, FLASH_EVENT_OP_COMPLETE);
+
+            UART1_SendString("[ResMan:SSI_FlashStateMachine][");
+            UART1_SendNumber(GetTick());
+            UART1_SendString("ms][C");
+            UART1_SendNumber(pOp->clientId);
+            UART1_SendString("] Operation SUCCESS\n");
+
+            // Call completion callback if provided
+            if (pOp->callback) {
+                pOp->callback(pOp->clientId, pOp->status);
+            }
+
+            // Reset state machine for next operation
+            pManager->currentState = FLASH_STATE_IDLE;
+            pManager->pCurrentOp = 0;
+
+            // Process next operation in queue if available
+            SSI_FlashProcessQueue(pSSIHandle);
+            break;
+
+        case FLASH_STATE_ERROR:
+            // CS is hardware-controlled, no manual control needed
+
+            // Error occurred - mark operation as failed
+            pOp->status = FLASH_STATUS_ERROR;
+            SSI_FlashSetEventFlag(pSSIHandle, FLASH_EVENT_ERROR);
+
+            UART1_SendString("[ResMan:SSI_FlashStateMachine][");
+            UART1_SendNumber(GetTick());
+            UART1_SendString("ms][C");
+            UART1_SendNumber(pOp->clientId);
+            UART1_SendString("] Operation FAILED\n");
+
+            // Call completion callback if provided
+            if (pOp->callback) {
+                pOp->callback(pOp->clientId, pOp->status);
+            }
+
+            // Reset state machine for next operation
+            pManager->currentState = FLASH_STATE_IDLE;
+            pManager->pCurrentOp = 0;
+
+            // Process next operation in queue if available
+            SSI_FlashProcessQueue(pSSIHandle);
+            break;
+
+        default:
+            // Invalid state - reset to idle
+            pManager->currentState = FLASH_STATE_IDLE;
+            break;
+    }
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashInterruptHandler
+ *
+ * @brief                       - Flash-specific interrupt handler for SSI operations
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ *
+ * @return                      - none
+ *
+ * @Note                        - Called from SSI_IRQHandling when flash interface is enabled
+ */
+void SSI_FlashInterruptHandler(SSI_Handle_t *pSSIHandle)
+{
+    uint32_t intStatus = pSSIHandle->pSSIx->MIS; // Masked interrupt status
+
+    // Debug: Log interrupt entry
+    static uint32_t irqCount = 0;
+    if (irqCount < 10) {  // Limit to first 10 to avoid spam
+        UART1_SendString("[IRQ:");
+        UART1_SendNumber(irqCount++);
+        UART1_SendString("] MIS=0x");
+        UART1_SendNumber(intStatus);
+        UART1_SendString("\n");
+    }
+
+    // Handle TX FIFO interrupt (can send more data)
+    if (intStatus & (1U << SSI_SSIMIS_TXMIS)) {
+        // TX FIFO is ready for more data
+        SSI_FlashStateMachine(pSSIHandle);
+    }
+
+    // Handle RX FIFO interrupt (data received)
+    if (intStatus & (1U << SSI_SSIMIS_RXMIS)) {
+        // RX FIFO has data available
+        SSI_FlashStateMachine(pSSIHandle);
+    }
+
+    // Handle timeout interrupt
+    if (intStatus & (1U << SSI_SSIMIS_RTMIS)) {
+        // Clear timeout interrupt
+        pSSIHandle->pSSIx->ICR |= (1 << SSI_SSIICR_RTIC);
+
+        // Mark current operation as timeout error
+        if (pSSIHandle->flashManager.pCurrentOp) {
+            pSSIHandle->flashManager.pCurrentOp->status = FLASH_STATUS_TIMEOUT;
+            pSSIHandle->flashManager.currentState = FLASH_STATE_ERROR;
+            SSI_FlashSetEventFlag(pSSIHandle, FLASH_EVENT_ERROR);
+        }
+    }
+
+    // Handle overrun error
+    if (intStatus & (1U << SSI_SSIMIS_RORMIS)) {
+        // Clear overrun interrupt
+        pSSIHandle->pSSIx->ICR |= (1 << SSI_SSIICR_RORIC);
+
+        // Mark current operation as error
+        if (pSSIHandle->flashManager.pCurrentOp) {
+            pSSIHandle->flashManager.pCurrentOp->status = FLASH_STATUS_ERROR;
+            pSSIHandle->flashManager.currentState = FLASH_STATE_ERROR;
+            SSI_FlashSetEventFlag(pSSIHandle, FLASH_EVENT_ERROR);
+        }
+    }
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashCancelOperation
+ *
+ * @brief                       - Cancels a queued flash operation for a specific client
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ * @param[in]                   - clientId: Client ID whose operation to cancel
+ *
+ * @return                      - 0: Success, 1: Operation not found, 2: Operation active
+ *
+ * @Note                        - Cannot cancel currently executing operations
+ */
+uint8_t SSI_FlashCancelOperation(SSI_Handle_t *pSSIHandle, uint8_t clientId)
+{
+    FlashResourceManager_t *pManager = &pSSIHandle->flashManager;
+
+    // Disable interrupts for atomic queue operation
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+
+    // Check if the current operation belongs to this client
+    if (pManager->pCurrentOp && pManager->pCurrentOp->clientId == clientId) {
+        __set_PRIMASK(primask);
+        return 2; // Cannot cancel active operation
+    }
+
+    // Search queue for client's operation
+    uint8_t index = pManager->queueHead;
+    for (uint8_t i = 0; i < pManager->queueCount; i++) {
+        if (pManager->queue[index].clientId == clientId) {
+            // Mark operation as cancelled
+            pManager->queue[index].status = FLASH_STATUS_CANCELLED;
+
+            // Call completion callback if provided
+            if (pManager->queue[index].callback) {
+                pManager->queue[index].callback(clientId, FLASH_STATUS_CANCELLED);
+            }
+
+            // Remove from queue by shifting remaining operations
+            for (uint8_t j = i; j < pManager->queueCount - 1; j++) {
+                uint8_t currentIndex = (pManager->queueHead + j) % FLASH_QUEUE_SIZE;
+                uint8_t nextIndex = (pManager->queueHead + j + 1) % FLASH_QUEUE_SIZE;
+                pManager->queue[currentIndex] = pManager->queue[nextIndex];
+            }
+
+            pManager->queueCount--;
+            __set_PRIMASK(primask);
+            return 0; // Success
+        }
+
+        index = (index + 1) % FLASH_QUEUE_SIZE;
+    }
+
+    __set_PRIMASK(primask);
+    return 1; // Operation not found
+}
+
+/***************************************************************************
+ * @fn                          - SSI_FlashGetOperationStatus
+ *
+ * @brief                       - Gets the status of a client's flash operation
+ *
+ * @param[in]                   - pSSIHandle: Pointer to the SSI handle structure
+ * @param[in]                   - clientId: Client ID to check status for
+ *
+ * @return                      - Operation status flags
+ *
+ * @Note                        - Returns current status of client's operation
+ */
+uint8_t SSI_FlashGetOperationStatus(SSI_Handle_t *pSSIHandle, uint8_t clientId)
+{
+    FlashResourceManager_t *pManager = &pSSIHandle->flashManager;
+
+    // Check current operation
+    if (pManager->pCurrentOp && pManager->pCurrentOp->clientId == clientId) {
+        return pManager->pCurrentOp->status;
+    }
+
+    // Check queue
+    uint8_t index = pManager->queueHead;
+    for (uint8_t i = 0; i < pManager->queueCount; i++) {
+        if (pManager->queue[index].clientId == clientId) {
+            return pManager->queue[index].status;
+        }
+        index = (index + 1) % FLASH_QUEUE_SIZE;
+    }
+
+    return 0; // No operation found for this client
+}
+
+/***************************************************************************
+ * SSI Interrupt Handlers
+ ***************************************************************************/
+
+/* External flash interface handle */
+extern SSI_Handle_t ssi2Flash;
+
+/*
+ * SSI2 Interrupt Handler
+ * Called by hardware when SSI2 interrupt fires
+ */
+void SSI2_IRQHandler(void) {
+    SSI_IRQHandling(&ssi2Flash);
 }

@@ -36,7 +36,72 @@ typedef struct {
 } SSI_Config_t;
 
 /**
- * @brief SSI Handle Structure for interrupt-based operations
+ * @brief Flash Operation Types for W25Q64FV
+ */
+typedef enum {
+    FLASH_OP_NONE = 0,
+    FLASH_OP_READ_ID,           /* Read JEDEC ID */
+    FLASH_OP_READ_STATUS,       /* Read Status Register */
+    FLASH_OP_WRITE_ENABLE,      /* Write Enable command */
+    FLASH_OP_PAGE_PROGRAM,      /* Page Program operation */
+    FLASH_OP_SECTOR_ERASE,      /* 4KB Sector Erase */
+    FLASH_OP_READ_DATA          /* Read data from flash */
+} FlashOperationType_t;
+
+/**
+ * @brief Flash Operation States for command sequences
+ */
+typedef enum {
+    FLASH_STATE_IDLE = 0,
+    FLASH_STATE_CMD_PHASE,      /* Sending command byte */
+    FLASH_STATE_ADDR_PHASE,     /* Sending address bytes */
+    FLASH_STATE_DATA_PHASE,     /* Sending/receiving data */
+    FLASH_STATE_STATUS_POLL,    /* Polling status register */
+    FLASH_STATE_COMPLETE,       /* Operation complete */
+    FLASH_STATE_ERROR           /* Error occurred */
+} FlashOperationState_t;
+
+/**
+ * @brief Flash Operation Request structure for client operations
+ */
+typedef struct {
+    FlashOperationType_t opType;    /* Type of operation */
+    uint32_t address;               /* Flash address (for read/write/erase) */
+    uint8_t *pData;                 /* Data buffer pointer */
+    uint32_t dataLen;               /* Data length */
+    uint8_t clientId;               /* Client identifier (0-255) */
+    uint8_t priority;               /* Operation priority (0=highest) */
+    volatile uint8_t status;        /* Operation status flags */
+    void (*callback)(uint8_t clientId, uint8_t status);  /* Completion callback */
+} FlashRequest_t;
+
+/**
+ * @brief Multi-Client Flash Resource Manager
+ */
+#define MAX_FLASH_CLIENTS     8     /* Maximum simultaneous clients */
+#define FLASH_QUEUE_SIZE      16    /* Maximum queued operations */
+
+typedef struct {
+    FlashRequest_t queue[FLASH_QUEUE_SIZE];  /* Operation queue */
+    volatile uint8_t queueHead;              /* Queue head index */
+    volatile uint8_t queueTail;              /* Queue tail index */
+    volatile uint8_t queueCount;             /* Number of queued operations */
+
+    volatile FlashRequest_t *pCurrentOp;     /* Currently executing operation */
+    volatile FlashOperationState_t currentState;  /* Current state machine state */
+    volatile uint8_t cmdBuffer[8];           /* Command/address buffer */
+    volatile uint8_t cmdIndex;               /* Current command byte index */
+    volatile uint8_t cmdLength;              /* Total command length */
+
+    volatile uint32_t statusPollCount;       /* Status polling counter */
+    volatile uint8_t lastStatus;             /* Last read status register value */
+
+    volatile uint32_t eventFlags;            /* Event flags for interrupt communication */
+    volatile uint8_t resourceLocked;         /* Resource lock flag */
+} FlashResourceManager_t;
+
+/**
+ * @brief SSI Handle Structure for interrupt-based operations with flash support
  */
 typedef struct {
     SSI_RegDef_t* pSSIx;     /* Pointer to the SSI register set (e.g., SSI0) */
@@ -47,6 +112,10 @@ typedef struct {
     uint32_t RxLen;          /* To store Rx len */
     uint8_t TxState;         /* To store Tx state */
     uint8_t RxState;         /* To store Rx state */
+
+    /* Flash-specific extensions for multi-client support */
+    FlashResourceManager_t flashManager;  /* Flash resource manager */
+    uint8_t isFlashInterface;             /* Flag: 1 if this SSI is for flash, 0 for generic */
 } SSI_Handle_t;
 
 /**
@@ -64,6 +133,57 @@ typedef struct {
 #define SSI_EVENT_RX_CMPLT      1   /* Data reception complete */
 #define SSI_EVENT_OVR_ERR       2   /* Overrun error occurred */
 #define SSI_EVENT_TIMEOUT       3   /* RX timeout occurred */
+
+/**
+ * Flash Operation Status Flags
+ */
+#define FLASH_STATUS_PENDING    0x01    /* Operation queued, waiting */
+#define FLASH_STATUS_ACTIVE     0x02    /* Operation in progress */
+#define FLASH_STATUS_COMPLETE   0x04    /* Operation completed successfully */
+#define FLASH_STATUS_ERROR      0x08    /* Operation failed */
+#define FLASH_STATUS_TIMEOUT    0x10    /* Operation timed out */
+#define FLASH_STATUS_CANCELLED  0x20    /* Operation was cancelled */
+
+/**
+ * Flash Event Flags for interrupt communication
+ */
+#define FLASH_EVENT_OP_COMPLETE     (1U << 0)   /* Current operation completed */
+#define FLASH_EVENT_STATUS_READY    (1U << 1)   /* Status register read complete */
+#define FLASH_EVENT_CMD_COMPLETE    (1U << 2)   /* Command phase complete */
+#define FLASH_EVENT_ADDR_COMPLETE   (1U << 3)   /* Address phase complete */
+#define FLASH_EVENT_DATA_COMPLETE   (1U << 4)   /* Data phase complete */
+#define FLASH_EVENT_ERROR           (1U << 5)   /* Error occurred */
+#define FLASH_EVENT_QUEUE_READY     (1U << 6)   /* Queue has space available */
+
+/**
+ * W25Q64FV Command Definitions
+ */
+#define W25QXX_CMD_READ_JEDEC_ID        0x9F    /* Read JEDEC ID */
+#define W25QXX_CMD_READ_STATUS_REG1     0x05    /* Read Status Register-1 */
+#define W25QXX_CMD_WRITE_ENABLE         0x06    /* Write Enable */
+#define W25QXX_CMD_WRITE_DISABLE        0x04    /* Write Disable */
+#define W25QXX_CMD_PAGE_PROGRAM         0x02    /* Page Program */
+#define W25QXX_CMD_SECTOR_ERASE_4KB     0x20    /* Sector Erase (4KB) */
+#define W25QXX_CMD_READ_DATA            0x03    /* Read Data */
+
+/**
+ * W25Q64FV Status Register Bits
+ */
+#define W25QXX_STATUS_BUSY              (1U << 0)   /* Erase/Write in Progress */
+#define W25QXX_STATUS_WEL               (1U << 1)   /* Write Enable Latch */
+#define W25QXX_STATUS_BP0               (1U << 2)   /* Block Protect bit 0 */
+#define W25QXX_STATUS_BP1               (1U << 3)   /* Block Protect bit 1 */
+#define W25QXX_STATUS_BP2               (1U << 4)   /* Block Protect bit 2 */
+#define W25QXX_STATUS_TB                (1U << 5)   /* Top/Bottom Protect */
+#define W25QXX_STATUS_SEC               (1U << 6)   /* Sector Protect */
+#define W25QXX_STATUS_SRP0              (1U << 7)   /* Status Register Protect 0 */
+
+/**
+ * Flash Operation Timeouts (in interrupt ticks)
+ */
+#define FLASH_TIMEOUT_PAGE_PROGRAM      500     /* ~0.45ms * safety margin */
+#define FLASH_TIMEOUT_SECTOR_ERASE      60000   /* ~60ms * safety margin */
+#define FLASH_TIMEOUT_COMMAND           100     /* Command execution timeout */
 
 /**
  * @SSI_DeviceMode
@@ -284,6 +404,30 @@ void SSI_CloseReception(SSI_Handle_t *pSSIHandle);
  */
 
 void SSI_ApplicationEventCallback(SSI_Handle_t *pSSIHandle, uint8_t AppEv);
+
+/*
+ * Flash Multi-Client Resource Manager APIs
+ */
+
+/* Flash resource manager initialization */
+void SSI_FlashInit(SSI_Handle_t *pSSIHandle);
+void SSI_FlashResourceManagerInit(SSI_Handle_t *pSSIHandle);
+
+/* Client operation APIs */
+uint8_t SSI_FlashQueueOperation(SSI_Handle_t *pSSIHandle, FlashRequest_t *pRequest);
+uint8_t SSI_FlashCancelOperation(SSI_Handle_t *pSSIHandle, uint8_t clientId);
+uint8_t SSI_FlashGetOperationStatus(SSI_Handle_t *pSSIHandle, uint8_t clientId);
+
+/* Resource manager processing */
+void SSI_FlashProcessQueue(SSI_Handle_t *pSSIHandle);
+void SSI_FlashStateMachine(SSI_Handle_t *pSSIHandle);
+void SSI_FlashInterruptHandler(SSI_Handle_t *pSSIHandle);
+
+/* Utility functions */
+uint8_t SSI_FlashIsResourceAvailable(SSI_Handle_t *pSSIHandle);
+void SSI_FlashSetEventFlag(SSI_Handle_t *pSSIHandle, uint32_t flag);
+uint32_t SSI_FlashGetEventFlags(SSI_Handle_t *pSSIHandle);
+void SSI_FlashClearEventFlag(SSI_Handle_t *pSSIHandle, uint32_t flag);
 
 
 

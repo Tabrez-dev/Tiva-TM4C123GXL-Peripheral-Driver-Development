@@ -17,6 +17,21 @@
 
 #define __weak   __attribute__((weak))
 
+/********************************** Interrupt Control Macros **********************************/
+/* TI ARM Compiler interrupt control - map CMSIS names to TI intrinsics */
+/* TI uses single underscore (_disable_IRQ) while CMSIS uses double (__disable_irq) */
+
+/* TI ARM Compiler provides these intrinsics (see SPNU151 section 6.8.1) */
+extern unsigned _disable_IRQ(void);    /* Disable IRQ, returns previous PRIMASK */
+extern unsigned _enable_IRQ(void);     /* Enable IRQ, returns previous PRIMASK */
+extern void _restore_interrupts(unsigned);  /* Restore interrupts to previous state */
+
+/* Map CMSIS-style names to TI intrinsics for code portability */
+#define __get_PRIMASK()         _disable_IRQ()    /* Returns PRIMASK and disables */
+#define __set_PRIMASK(x)        _restore_interrupts(x)  /* Restore PRIMASK state */
+#define __disable_irq()         (void)_disable_IRQ()    /* Just disable, ignore return */
+#define __enable_irq()          (void)_enable_IRQ()     /* Just enable, ignore return */
+
 /********************************** Memory Regions **********************************/
 #define FLASH_BASEADDR                          0x00000000U             /* Starting address of the 256 KB Flash memory, used for program code and constant data */
 #define SRAM_BASEADDR                           0x20000000U             /* Starting address of the 32 KB SRAM, used for runtime data storage */
@@ -77,6 +92,19 @@
 /********************************** SYSCTL Register **********************************/
 #define SYSCTL_BASEADDR                         0x400FE000U
 #define SYSCTL_GPIOHBCTL_R                      (*((volatile uint32_t *)(SYSCTL_BASEADDR + 0x06C)))
+
+/********************************** SysTick Registers **********************************/
+/* ARM Cortex-M4 SysTick Timer - Part of System Control Space */
+#define SysTick_BASE    0xE000E010UL
+
+typedef struct {
+    volatile uint32_t CTRL;   /* 0xE000E010 - SysTick Control and Status Register */
+    volatile uint32_t LOAD;   /* 0xE000E014 - SysTick Reload Value Register */
+    volatile uint32_t VAL;    /* 0xE000E018 - SysTick Current Value Register */
+    volatile uint32_t CALIB;  /* 0xE000E01C - SysTick Calibration Value Register */
+} SysTick_Type;
+
+#define SysTick    ((SysTick_Type*)SysTick_BASE)
 
 /********************************** GPIO Base Addresses **********************************/
 

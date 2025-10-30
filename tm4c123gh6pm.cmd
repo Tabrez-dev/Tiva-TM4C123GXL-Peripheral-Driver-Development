@@ -20,8 +20,8 @@ MEMORY
 /* If you are using CCS for building, it is probably better to make any such */
 /* modifications in your CCS project and leave this file alone.              */
 /*                                                                           */
-/* --heap_size=0                                                             */
-/* --stack_size=256                                                          */
+--heap_size=0x800     /* 2KB heap for printf and dynamic memory */
+--stack_size=0x200    /* 512 bytes stack */
 /* --library=rtsv7M4_T_le_eabi.lib                                           */
 
 /* Section allocation in memory */

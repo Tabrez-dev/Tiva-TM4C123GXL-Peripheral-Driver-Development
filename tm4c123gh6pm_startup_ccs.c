@@ -34,8 +34,8 @@ static void NmiSR(void);
 static void FaultISR(void);
 static void IntDefaultHandler(void);
 void __attribute__((weak)) GPIOF_IRQHandler(void);
-void __attribute__((weak, alias("IntDefaultHandler"))) SSI2_IRQHandler(void);
 void __attribute__((weak, alias("IntDefaultHandler"))) GPIOD_IRQHandler(void);
+// SysTick_Handler and SSI2_IRQHandler have weak implementations below (can be overridden)
 //*****************************************************************************
 //
 // External declaration for the reset handler that is to be called when the
@@ -84,7 +84,7 @@ void (* const g_pfnVectors[])(void) =
     IntDefaultHandler,                      // Debug monitor handler
     0,                                      // Reserved
     IntDefaultHandler,                      // The PendSV handler
-    IntDefaultHandler,                      // The SysTick handler
+    SysTick_Handler,                        // The SysTick handler
     IntDefaultHandler,                      // GPIO Port A
     IntDefaultHandler,                      // GPIO Port B
     IntDefaultHandler,                      // GPIO Port C
@@ -299,4 +299,22 @@ IntDefaultHandler(void)
     while(1)
     {
     }
+}
+
+//*****************************************************************************
+//
+// Weak default handlers that can be overridden
+//
+//*****************************************************************************
+void __attribute__((weak))
+SysTick_Handler(void)
+{
+    // Default: do nothing (override this in your application)
+}
+
+void __attribute__((weak))
+SSI2_IRQHandler(void)
+{
+    // Default: go to default handler
+    IntDefaultHandler();
 }
