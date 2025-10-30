@@ -93,6 +93,19 @@ extern void _restore_interrupts(unsigned);  /* Restore interrupts to previous st
 #define SYSCTL_BASEADDR                         0x400FE000U
 #define SYSCTL_GPIOHBCTL_R                      (*((volatile uint32_t *)(SYSCTL_BASEADDR + 0x06C)))
 
+/********************************** SysTick Registers **********************************/
+/* ARM Cortex-M4 SysTick Timer - Part of System Control Space */
+#define SysTick_BASE    0xE000E010UL
+
+typedef struct {
+    volatile uint32_t CTRL;   /* 0xE000E010 - SysTick Control and Status Register */
+    volatile uint32_t LOAD;   /* 0xE000E014 - SysTick Reload Value Register */
+    volatile uint32_t VAL;    /* 0xE000E018 - SysTick Current Value Register */
+    volatile uint32_t CALIB;  /* 0xE000E01C - SysTick Calibration Value Register */
+} SysTick_Type;
+
+#define SysTick    ((SysTick_Type*)SysTick_BASE)
+
 /********************************** GPIO Base Addresses **********************************/
 
 /* GPIO Base Addresses (APB) */

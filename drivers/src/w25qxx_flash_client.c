@@ -394,6 +394,10 @@ static FlashResult_t FlashClient_ExecuteOperation(FlashClient_t *pClient, FlashO
     pClient->operationComplete = false;
     pClient->lastOpStatus = FLASH_STATUS_PENDING;
 
+    // Register this client for callback (needed by FlashClient_OperationCallback)
+    extern FlashClient_t *g_currentClient;
+    g_currentClient = pClient;
+
     // Queue operation in resource manager
     uint8_t queueResult = SSI_FlashQueueOperation(pClient->pSSIHandle, &request);
     if (queueResult != 0) {
@@ -401,21 +405,50 @@ static FlashResult_t FlashClient_ExecuteOperation(FlashClient_t *pClient, FlashO
         return (queueResult == 1) ? FLASH_RESULT_QUEUE_FULL : FLASH_RESULT_INVALID_PARAM;
     }
 
-    // Wait for operation completion with timeout
-    uint32_t timeoutCounter = 0;
-    while (!pClient->operationComplete && timeoutCounter < timeoutMs) {
-        // Simple delay - in production use proper delay function
+    // Wait for operation completion with timeout using SysTick
+    extern uint32_t GetTick(void);
+    extern void UART1_SendString(const char *str);
+    extern void UART1_SendNumber(uint32_t num);
+
+    UART1_SendString("[FlashClient] Wait loop start\n");
+
+    uint32_t startTime = GetTick();
+    uint8_t manualCallDone = 0;
+    uint32_t lastPrintTime = startTime;
+
+    while (!pClient->operationComplete) {
+        uint32_t currentTime = GetTick();
+
+        // Print status every 100ms (reduce UART traffic)
+        if ((currentTime - lastPrintTime) >= 100) {
+            UART1_SendString("[Wait:");
+            UART1_SendNumber(currentTime - startTime);
+            UART1_SendString("ms]\n");
+            lastPrintTime = currentTime;
+        }
+
+        // Check for timeout
+        if ((currentTime - startTime) >= timeoutMs) {
+            UART1_SendString("[TIMEOUT]\n");
+            SSI_FlashCancelOperation(pClient->pSSIHandle, pClient->clientId);
+            pClient->operationComplete = true;
+            return FLASH_RESULT_TIMEOUT;
+        }
+
+        // TEST: Manually call handler at 50ms
+        if (!manualCallDone && (currentTime - startTime) >= 50) {
+            UART1_SendString("[Manual IRQ call]\n");
+            extern void SSI2_IRQHandler(void);
+            SSI2_IRQHandler();
+            UART1_SendString("[Manual IRQ done]\n");
+            manualCallDone = 1;
+        }
+
+        // Small yield
         for (volatile uint32_t i = 0; i < 1000; i++);
-        timeoutCounter++;
     }
 
-    // Check if operation completed
-    if (!pClient->operationComplete) {
-        // Timeout occurred - try to cancel operation
-        SSI_FlashCancelOperation(pClient->pSSIHandle, pClient->clientId);
-        pClient->operationComplete = true;
-        return FLASH_RESULT_TIMEOUT;
-    }
+    UART1_SendString("[FlashClient] Wait loop exited, operation complete\n");
 
     // Convert operation status to result code
     return FlashClient_StatusToResult(pClient->lastOpStatus);
@@ -433,16 +466,28 @@ static FlashResult_t FlashClient_ExecuteOperation(FlashClient_t *pClient, FlashO
  *
  * @Note                        - Called from interrupt context when operation completes
  */
+// Global pointer to track which client is waiting for callback
+// NOTE: This simple approach only works for single-operation-at-a-time per client
+// Production code should use a client registry for true multi-client support
+FlashClient_t *g_currentClient = 0;
+
+/* External UART for debugging callbacks */
+extern void UART1_SendString(const char *str);
+extern void UART1_SendNumber(uint32_t num);
+extern uint32_t GetTick(void);
+
 static void FlashClient_OperationCallback(uint8_t clientId, uint8_t status)
 {
+    // Debug: Log callback invocation
+    UART1_SendString("[Callback][");
+    UART1_SendNumber(GetTick());
+    UART1_SendString("ms][C");
+    UART1_SendNumber(clientId);
+    UART1_SendString("] status=");
+    UART1_SendNumber(status);
+    UART1_SendString("\n");
+
     // Find client by ID and update operation status
-    // In a real implementation, maintain a client registry
-    // For now, assume single client or use global state
-
-    // This is a simplified implementation - production code would maintain
-    // a client registry to map clientId to client handles
-    static FlashClient_t *g_currentClient = 0;
-
     if (g_currentClient && g_currentClient->clientId == clientId) {
         g_currentClient->lastOpStatus = status;
         g_currentClient->operationComplete = true;
