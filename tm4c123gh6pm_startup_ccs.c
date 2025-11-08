@@ -35,7 +35,8 @@ static void FaultISR(void);
 static void IntDefaultHandler(void);
 void __attribute__((weak)) GPIOF_IRQHandler(void);
 void __attribute__((weak, alias("IntDefaultHandler"))) GPIOD_IRQHandler(void);
-// SysTick_Handler and SSI2_IRQHandler have weak implementations below (can be overridden)
+void __attribute__((weak)) SysTick_Handler(void);
+void __attribute__((weak)) SSI2_IRQHandler(void);
 //*****************************************************************************
 //
 // External declaration for the reset handler that is to be called when the

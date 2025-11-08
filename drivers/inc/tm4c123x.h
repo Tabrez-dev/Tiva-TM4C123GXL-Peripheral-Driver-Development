@@ -16,6 +16,7 @@
 #include<stddef.h>
 
 #define __weak   __attribute__((weak))
+#define __vo     volatile
 
 /********************************** Interrupt Control Macros **********************************/
 /* TI ARM Compiler interrupt control - map CMSIS names to TI intrinsics */
@@ -82,6 +83,9 @@ extern void _restore_interrupts(unsigned);  /* Restore interrupts to previous st
 #define IRQ_NO_UART0            5       /* UART0 Interrupt */
 #define IRQ_NO_UART1            6       /* UART1 Interrupt */
 #define IRQ_NO_I2C0             8       /* I2C0 Master and Slave Interrupt */
+#define IRQ_NO_I2C1             37      /* I2C1 Master and Slave Interrupt */
+#define IRQ_NO_I2C2             68      /* I2C2 Master and Slave Interrupt */
+#define IRQ_NO_I2C3             69      /* I2C3 Master and Slave Interrupt */
 #define IRQ_NO_PWM0_FAULT       9       /* PWM0 Fault Interrupt */
 #define IRQ_NO_PWM0_GEN0        10      /* PWM0 Generator 0 Interrupt */
 #define IRQ_NO_TIMER0A          19      /* 16/32-Bit Timer 0A Interrupt */
@@ -532,6 +536,41 @@ typedef struct {
     volatile uint32_t DMACTL;      /* DMA Control (offset 0x048) */
 } UART_RegDef_t;
 
+/* I2C Peripheral Register Structure */
+typedef struct {
+    /* I2C Master Registers */
+    __vo uint32_t MSA;          /* 0x000: Master Slave Address */
+    __vo uint32_t MCS;          /* 0x004: Master Control/Status */
+    __vo uint32_t MDR;          /* 0x008: Master Data */
+    __vo uint32_t MTPR;         /* 0x00C: Master Timer Period */
+    __vo uint32_t MIMR;         /* 0x010: Master Interrupt Mask */
+    __vo uint32_t MRIS;         /* 0x014: Master Raw Interrupt Status */
+    __vo uint32_t MMIS;         /* 0x018: Master Masked Interrupt Status */
+    __vo uint32_t MICR;         /* 0x01C: Master Interrupt Clear */
+    __vo uint32_t MCR;          /* 0x020: Master Configuration */
+    __vo uint32_t MCLKOCNT;     /* 0x024: Master Clock Low Timeout Count */
+    uint32_t RESERVED0;         /* 0x028: Reserved */
+    __vo uint32_t MBMON;        /* 0x02C: Master Bus Monitor */
+    uint32_t RESERVED1[2];      /* 0x030-0x034: Reserved */
+    __vo uint32_t MCR2;         /* 0x038: Master Configuration 2 */
+    uint32_t RESERVED2[497];    /* 0x03C-0x7FC: Reserved */
+
+    /* I2C Slave Registers */
+    __vo uint32_t SOAR;         /* 0x800: Slave Own Address */
+    __vo uint32_t SCSR;         /* 0x804: Slave Control/Status */
+    __vo uint32_t SDR;          /* 0x808: Slave Data */
+    __vo uint32_t SIMR;         /* 0x80C: Slave Interrupt Mask */
+    __vo uint32_t SRIS;         /* 0x810: Slave Raw Interrupt Status */
+    __vo uint32_t SMIS;         /* 0x814: Slave Masked Interrupt Status */
+    __vo uint32_t SICR;         /* 0x818: Slave Interrupt Clear */
+    __vo uint32_t SOAR2;        /* 0x81C: Slave Own Address 2 */
+    __vo uint32_t SACKCTL;      /* 0x820: Slave ACK Control */
+    uint32_t RESERVED3[487];    /* 0x824-0xFBC: Reserved */
+
+    /* I2C Peripheral Properties */
+    __vo uint32_t PP;           /* 0xFC0: Peripheral Properties */
+    __vo uint32_t PC;           /* 0xFC4: Peripheral Configuration */
+} I2C_RegDef_t;
 
 
 /****************************************************************Peripheral definitions typecasted**************************************************************************/
@@ -566,6 +605,12 @@ typedef struct {
 #define UART5            ((UART_RegDef_t*)UART_5_BASEADDR)
 #define UART6            ((UART_RegDef_t*)UART_6_BASEADDR)
 #define UART7            ((UART_RegDef_t*)UART_7_BASEADDR)
+
+/* I2C Peripheral Instances */
+#define I2C0             ((I2C_RegDef_t*)I2C_0_BASEADDR)
+#define I2C1             ((I2C_RegDef_t*)I2C_1_BASEADDR)
+#define I2C2             ((I2C_RegDef_t*)I2C_2_BASEADDR)
+#define I2C3             ((I2C_RegDef_t*)I2C_3_BASEADDR)
 
 /* Clock enable macros for GPIOx peripherals */
 #define GPIOA_PCLK_EN() (SYSCTL_RUNCLK->RCGCGPIO |= 1U<<0)
@@ -791,6 +836,101 @@ typedef struct {
     while(!(SYSCTL_PR->PRSSI & (1U << 3))) {}; \
 } while(0)
 
+/***********************************************************************************
+ * Bit position definitions of I2C peripheral
+ ***********************************************************************************/
+
+/* I2CMSA Register Bits */
+#define I2C_MSA_SA              1       /* Slave Address bit position */
+#define I2C_MSA_RS              0       /* Receive/Send bit */
+
+/* I2CMCS Register Bits - Read (Status) */
+#define I2C_MCS_CLKTO           7       /* Clock Timeout Error */
+#define I2C_MCS_BUSBSY          6       /* Bus Busy */
+#define I2C_MCS_IDLE            5       /* I2C Idle */
+#define I2C_MCS_ARBLST          4       /* Arbitration Lost */
+#define I2C_MCS_DATACK          3       /* Acknowledge Data */
+#define I2C_MCS_ADRACK          2       /* Acknowledge Address */
+#define I2C_MCS_ERROR           1       /* Error */
+#define I2C_MCS_BUSY            0       /* I2C Busy */
+
+/* I2CMCS Register Bits - Write (Control) */
+#define I2C_MCS_HS              4       /* High-Speed Enable */
+#define I2C_MCS_ACK             3       /* Data Acknowledge Enable */
+#define I2C_MCS_STOP            2       /* Generate STOP */
+#define I2C_MCS_START           1       /* Generate START */
+#define I2C_MCS_RUN             0       /* I2C Master Enable */
+
+/* I2CMTPR Register Bits */
+#define I2C_MTPR_HS             7       /* High-Speed Enable */
+#define I2C_MTPR_TPR            0       /* Timer Period (bits 6:0) */
+
+/* I2CMIMR Register Bits */
+#define I2C_MIMR_CLKIM          1       /* Clock Timeout Interrupt Mask */
+#define I2C_MIMR_IM             0       /* Master Interrupt Mask */
+
+/* I2CMRIS Register Bits */
+#define I2C_MRIS_CLKRIS         1       /* Clock Timeout Raw Interrupt Status */
+#define I2C_MRIS_RIS            0       /* Master Raw Interrupt Status */
+
+/* I2CMMIS Register Bits */
+#define I2C_MMIS_CLKMIS         1       /* Clock Timeout Masked Interrupt Status */
+#define I2C_MMIS_MIS            0       /* Masked Interrupt Status */
+
+/* I2CMICR Register Bits */
+#define I2C_MICR_CLKIC          1       /* Clock Timeout Interrupt Clear */
+#define I2C_MICR_IC             0       /* Master Interrupt Clear */
+
+/* I2CMCR Register Bits */
+#define I2C_MCR_GFE             6       /* I2C Glitch Filter Enable */
+#define I2C_MCR_SFE             5       /* I2C Slave Function Enable */
+#define I2C_MCR_MFE             4       /* I2C Master Function Enable */
+#define I2C_MCR_LPBK            0       /* I2C Loopback */
+
+/* I2CMCR2 Register Bits */
+#define I2C_MCR2_GFPW           4       /* Glitch Filter Pulse Width (bits 6:4) */
+
+/* I2CSCSR Register Bits - Read (Status) */
+#define I2C_SCSR_OAR2SEL        3       /* OAR2 Address Matched */
+#define I2C_SCSR_FBR            2       /* First Byte Received */
+#define I2C_SCSR_TREQ           1       /* Transmit Request */
+#define I2C_SCSR_RREQ           0       /* Receive Request */
+
+/* I2CSCSR Register Bits - Write (Control) */
+#define I2C_SCSR_DA             0       /* Device Active */
+
+/* I2CSIMR Register Bits */
+#define I2C_SIMR_STOPIM         2       /* Stop Condition Interrupt Mask */
+#define I2C_SIMR_STARTIM        1       /* Start Condition Interrupt Mask */
+#define I2C_SIMR_DATAIM         0       /* Data Interrupt Mask */
+
+/* I2CSRIS Register Bits */
+#define I2C_SRIS_STOPRIS        2       /* Stop Condition Raw Interrupt Status */
+#define I2C_SRIS_STARTRIS       1       /* Start Condition Raw Interrupt Status */
+#define I2C_SRIS_DATARIS        0       /* Data Raw Interrupt Status */
+
+/* I2CSMIS Register Bits */
+#define I2C_SMIS_STOPMIS        2       /* Stop Condition Masked Interrupt Status */
+#define I2C_SMIS_STARTMIS       1       /* Start Condition Masked Interrupt Status */
+#define I2C_SMIS_DATAMIS        0       /* Data Masked Interrupt Status */
+
+/* I2CSICR Register Bits */
+#define I2C_SICR_STOPIC         2       /* Stop Condition Interrupt Clear */
+#define I2C_SICR_STARTIC        1       /* Start Condition Interrupt Clear */
+#define I2C_SICR_DATAIC         0       /* Data Interrupt Clear */
+
+/* I2CSOAR2 Register Bits */
+#define I2C_SOAR2_OAR2EN        7       /* I2C Slave Own Address 2 Enable */
+
+/* I2CSACKCTL Register Bits */
+#define I2C_SACKCTL_ACKOVAL     1       /* I2C Slave ACK Override Value */
+#define I2C_SACKCTL_ACKOEN      0       /* I2C Slave ACK Override Enable */
+
+/* I2CPP Register Bits */
+#define I2C_PP_HS               0       /* High-Speed Capable */
+
+/* I2CPC Register Bits */
+#define I2C_PC_HS               0       /* High-Speed Capable */
 
 /*
  * Some generic macors

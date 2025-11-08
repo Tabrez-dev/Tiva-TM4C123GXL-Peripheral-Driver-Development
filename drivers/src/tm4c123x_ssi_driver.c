@@ -9,16 +9,16 @@
 #include <stdio.h>
 
 /* External timestamp function for telemetry */
-extern uint32_t GetTick(void);
+__attribute__((weak)) uint32_t GetTick(void) { return 0; }
 
 /* External UART functions for telemetry (safe from ISR) */
-extern void UART1_SendString(const char *str);
-extern void UART1_SendNumber(uint32_t num);
-extern void UART1_SendChar(char c);
+__attribute__((weak)) void UART1_SendString(const char *str) { (void)str; }
+__attribute__((weak)) void UART1_SendNumber(uint32_t num) { (void)num; }
+__attribute__((weak)) void UART1_SendChar(char c) { (void)c; }
 
 /* External statistics variables */
-extern uint32_t queueMaxDepth;
-extern uint32_t totalOperations;
+__attribute__((weak)) uint32_t queueMaxDepth = 0;
+__attribute__((weak)) uint32_t totalOperations = 0;
 
 static void SSI_TXE_InterruptHandle(SSI_Handle_t *pSSIHandle);
 static void SSI_RXNE_InterruptHandle(SSI_Handle_t *pSSIHandle);
@@ -1514,13 +1514,15 @@ uint8_t SSI_FlashGetOperationStatus(SSI_Handle_t *pSSIHandle, uint8_t clientId)
  * SSI Interrupt Handlers
  ***************************************************************************/
 
-/* External flash interface handle */
-extern SSI_Handle_t ssi2Flash;
+/* External flash interface handle - weak stub for projects not using SSI2 */
+__attribute__((weak)) SSI_Handle_t ssi2Flash = {0};
 
 /*
  * SSI2 Interrupt Handler
  * Called by hardware when SSI2 interrupt fires
  */
 void SSI2_IRQHandler(void) {
-    SSI_IRQHandling(&ssi2Flash);
+    if (ssi2Flash.pSSIx != NULL) {
+        SSI_IRQHandling(&ssi2Flash);
+    }
 }
