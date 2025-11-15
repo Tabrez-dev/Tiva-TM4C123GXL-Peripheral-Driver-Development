@@ -101,3 +101,4 @@ doxygen/
 CLAUDE.md
 slave.c
 slave_2.c
+stm32_i2c_slave.c

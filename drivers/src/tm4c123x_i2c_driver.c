@@ -671,9 +671,95 @@ void I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pTxbuffer, uint32_t L
     }
 }
 
+/*********************************************************************
+ * @fn              - I2C_MasterReceiveData
+ *
+ * @brief           - Master receives data from slave (blocking mode)
+ *
+ * @param[in]       - pI2CHandle: I2C handle structure
+ * @param[in]       - pRxBuffer: pointer to receive buffer
+ * @param[in]       - Len: number of bytes to receive
+ * @param[in]       - SlaveAddr: 7-bit slave address
+ * @param[in]       - Sr: repeated start enable/disable (currently unused)
+ *
+ * @return          - none
+ *
+ * @Note            - Based on TM4C123 datasheet Figures 16-9 and 16-11
+ *                  - This is a blocking call
+ *                  - Always sends STOP condition (no repeated start support yet)
+ */
 void I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle, uint8_t *pRxBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr)
 {
-    /* TODO: Implement master receive data (blocking mode) */
+    volatile uint32_t timeout;
+
+    /* Set slave address in MSA register with R/S bit = 1 (receive mode) */
+    pI2CHandle->pI2Cx->MSA = (SlaveAddr << 1) | 1;  /* R/S=1 for receive */
+
+    /* Handle single byte reception (Figure 16-9) */
+    if (Len == 1)
+    {
+        /* Single byte: START + RUN + STOP (0x07)
+         * Hardware automatically NAKs the single byte */
+        pI2CHandle->pI2Cx->MCS = (1 << I2C_MCS_START) |
+                                  (1 << I2C_MCS_RUN) |
+                                  (1 << I2C_MCS_STOP);
+
+        /* Wait for BUSY to clear */
+        timeout = 100000;
+        while ((pI2CHandle->pI2Cx->MCS & (1 << I2C_MCS_BUSY)) && timeout--);
+
+        /* Read the received byte from MDR */
+        *pRxBuffer = (uint8_t)(pI2CHandle->pI2Cx->MDR & 0xFF);
+    }
+    /* Handle multi-byte reception (Figure 16-11) */
+    else
+    {
+        uint32_t i;
+
+        /* First byte: START + RUN + ACK (0x0B) */
+        pI2CHandle->pI2Cx->MCS = (1 << I2C_MCS_START) |
+                                  (1 << I2C_MCS_RUN) |
+                                  (1 << I2C_MCS_ACK);
+
+        /* Wait for BUSY to clear */
+        timeout = 100000;
+        while ((pI2CHandle->pI2Cx->MCS & (1 << I2C_MCS_BUSY)) && timeout--);
+        if (timeout == 0) return;
+
+        /* Read first byte */
+        *pRxBuffer = (uint8_t)(pI2CHandle->pI2Cx->MDR & 0xFF);
+        pRxBuffer++;
+
+        /* Loop through remaining bytes (2 to Len) */
+        for (i = 1; i < Len; i++)
+        {
+            /* Check if this is the last byte */
+            if (i == (Len - 1))
+            {
+                /* Last byte: STOP + RUN (0x05) - sends NACK after this byte */
+                pI2CHandle->pI2Cx->MCS = (1 << I2C_MCS_RUN) |
+                                          (1 << I2C_MCS_STOP);
+            }
+            else
+            {
+                /* Middle bytes: RUN + ACK (0x09) - sends ACK after this byte */
+                pI2CHandle->pI2Cx->MCS = (1 << I2C_MCS_RUN) |
+                                          (1 << I2C_MCS_ACK);
+            }
+
+            /* Wait for BUSY to clear */
+            timeout = 100000;
+            while ((pI2CHandle->pI2Cx->MCS & (1 << I2C_MCS_BUSY)) && timeout--);
+            if (timeout == 0) return;
+
+            /* Read received byte */
+            *pRxBuffer = (uint8_t)(pI2CHandle->pI2Cx->MDR & 0xFF);
+            pRxBuffer++;
+        }
+    }
+
+    /* Note: Repeated start (Sr parameter) not yet implemented
+     * This implementation always sends STOP condition */
 }
 
 uint8_t I2C_MasterSendDataIT(I2C_Handle_t *pI2CHandle, uint8_t *pTxbuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr)

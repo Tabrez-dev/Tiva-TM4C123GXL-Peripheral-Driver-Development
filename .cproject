@@ -196,7 +196,7 @@
 						</tool>
 					</fileInfo>
 					<sourceEntries>
-						<entry excluding="src/009multi_client_flash_demo.c|src/008ssi_w25qxx_flash_minimal.c|src/007ssi_interrupt_slave.c|slave_2.c|src/006ssi_cmd_handling.c|slave.c|src/005ssi_tx_testing.c|src/005ssi_tx_testing_debug.c|src/005ssi_tx_simple_test.c|src/004button_int.c|src/003_led_toggle_ext_btn.c|src/002_ledtogggle_usr_button.c|src/001_led_toggle.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/010i2c_loopback_test.c|src/009multi_client_flash_demo.c|src/008ssi_w25qxx_flash_minimal.c|src/007ssi_interrupt_slave.c|slave_2.c|src/006ssi_cmd_handling.c|slave.c|src/005ssi_tx_testing.c|src/005ssi_tx_testing_debug.c|src/005ssi_tx_simple_test.c|src/004button_int.c|src/003_led_toggle_ext_btn.c|src/002_ledtogggle_usr_button.c|src/001_led_toggle.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

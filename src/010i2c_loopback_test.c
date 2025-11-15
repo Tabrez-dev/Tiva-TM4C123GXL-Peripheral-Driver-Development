@@ -162,6 +162,7 @@
 
 /* Test result structure - inspect in debugger */
 typedef struct {
+    /* Master Transmit Tests (Loopback Mode Only) */
     uint8_t test1_single_byte_pass;
     uint8_t test2_multi_byte_pass;
     uint8_t all_tests_pass;
@@ -349,10 +350,13 @@ uint8_t Test_MultiByte(void)
  * 1. Initialize GPIO pins for I2C0
  * 2. Initialize I2C0 as both master and slave
  * 3. Enable loopback mode
- * 4. Run single-byte test
- * 5. Run multi-byte test
+ * 4. Run Test 1: Master TX single byte (0xAA)
+ * 5. Run Test 2: Master TX multi-byte (0x11, 0x22, 0x33, 0x44, 0x55)
  * 6. Calculate overall result
  * 7. Halt in infinite loop for debugging
+ *
+ * NOTE: Master RX tests removed - they don't work in loopback mode
+ * with polled slave TX. See 011i2c_master_rx_test.c for real slave testing.
  *
  * Set breakpoint at while(1) and inspect g_test_results
  */
@@ -406,8 +410,10 @@ int main(void)
     g_test_results.msa_value = I2C0->MSA;    /* Will be set during test (0xD0 = 0x68<<1) */
     g_test_results.mtpr_value = I2C0->MTPR;  /* Clock period - should be 9 for 100kHz @ 16MHz system clock */
 
-    /* 6. Run tests */
+    /* 6. Run loopback tests */
     g_test_results.test1_single_byte_pass = Test_SingleByte();
+    delay();  /* Small delay between tests */
+
     g_test_results.test2_multi_byte_pass = Test_MultiByte();
 
     /* 7. Calculate overall result */

@@ -194,6 +194,7 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle)
             }
             else if (mode == GPIO_MODE_ALT_FN)
             {
+                port->DEN |= mask;   // Enable digital function (REQUIRED for I2C!)
                 port->AFSEL |= mask; // Enable alternate function
                 // Set Alternate Function in PCTL
                 uint32_t shift = pin * 4;
